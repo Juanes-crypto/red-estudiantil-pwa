@@ -6,13 +6,20 @@ import { supabase } from '../lib/supabaseClient'
 interface Group {
   id: string;
   name: string;
+  description: string | null;
+}
+
+interface Props {
+  // "onSelectGroup" es la función "botón de pánico"
+  // Pasa el ID y el NOMBRE del grupo seleccionado
+  onSelectGroup: (groupId: string, groupName: string) => void;
 }
 
 // 3. Props: ¡Este componente no necesita props!
 // ¿Por qué? Porque puede usar auth.uid() para buscar
 // los grupos del docente que está logueado. ¡Es autónomo!
 
-export default function TeacherGroupsList() {
+export default function TeacherGroupsList({ onSelectGroup }: Props) {
   // 4. Estados
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,6 +42,7 @@ export default function TeacherGroupsList() {
           .select(`
             id,
             name,
+            description,
             docentes_grupos!inner ( docente_id )
           `)
           // ...¡PERO! solo queremos los grupos donde
@@ -73,8 +81,13 @@ export default function TeacherGroupsList() {
       <ul className="divide-y divide-zinc-600">
         {groups.map((group) => (
           <li key={group.id} className="py-3">
+            <button
+      onClick={() => onSelectGroup(group.id, group.name)}
+      className="w-full rounded-lg bg-zinc-700 p-4 text-left hover:bg-zinc-600"
+    >
             <h3 className="font-semibold text-white">Grupo: {group.name}</h3>
             {/* Aquí pondremos un botón/link para "Tomar Asistencia" */}
+            </button>
           </li>
         ))}
       </ul>

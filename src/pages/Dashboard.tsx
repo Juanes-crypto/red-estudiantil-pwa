@@ -5,6 +5,10 @@ import { User } from '@supabase/supabase-js'
 import RegisterChildForm from '../components/RegisterChildForm'
 import StudentList from '../components/StudentList'
 import TeacherGroupsList from '../components/TeacherGroupsList'
+// --- ¡NUEVO AQUÍ! ---
+// Importamos la lista de estudiantes del grupo
+import GroupStudentList from '../components/GroupStudentList'
+// --- FIN DE LO NUEVO ---
 
 // Interfaz para definir cómo se ve nuestro "perfil"
 interface Profile {
@@ -19,10 +23,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [listKey, setListKey] = useState(0)
 
-  // --- ¡NUEVO ESTADO PARA LAS VISTAS! ---
   // 'menu' (default), 'register', o 'list'
   const [parentView, setParentView] = useState<'menu' | 'register' | 'list'>('menu')
-
+  // 'menu' (default) o 'attendance'
+  const [teacherView, setTeacherView] = useState<'menu' | 'attendance'>('menu')
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string, name: string } | null>(null)
+  
   // Se ejecuta cuando el componente carga
   useEffect(() => {
     const fetchData = async () => {
@@ -48,12 +54,16 @@ export default function Dashboard() {
     fetchData()
   }, [])
 
-  // ¡ACTUALIZADO! Ahora hace dos cosas:
+  // Para el formulario de Padre
   const handleChildRegistered = () => {
-    // 1. Incrementamos la llave para refrescar la lista
     setListKey(prevKey => prevKey + 1)
-    // 2. ¡Redirigimos a la vista de la lista!
     setParentView('list')
+  }
+
+  // Para la lista de Grupos del Docente
+  const handleGroupSelect = (groupId: string, groupName: string) => {
+    setSelectedGroup({ id: groupId, name: groupName });
+    setTeacherView('attendance'); // ¡Cambiamos a la vista de "Asistencia"!
   }
 
   // -- Función de Cerrar Sesión --
@@ -74,7 +84,6 @@ export default function Dashboard() {
 
   // Si terminó de cargar...
   return (
-    // Ajustamos el padding para que el contenido no esté pegado arriba
     <div className="flex min-h-screen w-full flex-col items-center bg-zinc-900 p-8 text-white">
       
       {/* --- CABECERA (Se ve siempre) --- */}
@@ -90,9 +99,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* --- INICIO DE LÓGICA DE ROL (¡AQUÍ ESTÁ LA MAGIA!) --- */}
-
-      {/* Si el rol es 'padre' */}
+      {/* --- INICIO DE LÓGICA DE ROL PADRE --- */}
       {profile && profile.role === 'padre' && user && (
         <div className="mt-4 w-full max-w-md">
           
@@ -114,7 +121,6 @@ export default function Dashboard() {
               >
                 Ver Mis Hijos Registrados
               </button>
-              {/* (Aquí pondremos "Ver Asistencias" en el futuro) */}
             </div>
           )}
 
@@ -155,23 +161,55 @@ export default function Dashboard() {
           
         </div>
       )}
+      {/* --- FIN DE LÓGICA DE ROL PADRE --- */}
 
-      {/* (Aquí podríamos poner un 'else if (profile.role === 'docente')' en el futuro) */}
-      {/* --- FIN DE LÓGICA DE ROL --- */}
 
       {/* --- INICIO DE LÓGICA DE ROL DOCENTE --- */}
-  {profile && profile.role === 'docente' && (
-    <div className="mt-8 w-full max-w-md space-y-6">
-      <h2 className="mb-4 text-center text-xl font-semibold text-white">
-        Panel de Docente
-      </h2>
+      {profile && profile.role === 'docente' && (
+        <div className="mt-8 w-full max-w-md space-y-6">
 
-      {/* ¡Aquí usamos el nuevo componente! */}
-      <TeacherGroupsList />
+          {/* --- VISTA 1: MENÚ DE GRUPOS (Default) --- */}
+          {teacherView === 'menu' && (
+            <div>
+              <h2 className="mb-4 text-center text-xl font-semibold text-white">
+                Mis Grupos Asignados
+              </h2>
+              <TeacherGroupsList onSelectGroup={handleGroupSelect} />
+            </div>
+          )}
 
-    </div>
-  )}
-  {/* --- FIN DE LÓGICA DE ROL DOCENTE --- */}
+          {/* --- VISTA 2: TOMAR ASISTENCIA (¡ACTUALIZADO!) --- */}
+          {teacherView === 'attendance' && (
+            <div>
+              <h2 className="mb-2 text-center text-xl font-semibold text-white">
+                Tomar Asistencia
+              </h2>
+              <p className="mb-6 text-center text-lg text-cyan-400">
+                {selectedGroup?.name}
+              </p>
+
+              {/* --- REEMPLAZADO --- */}
+              {/* ¡Aquí usamos el nuevo componente! */}
+              {/* Nos aseguramos de que selectedGroup no sea nulo */}
+              {selectedGroup && (
+                <GroupStudentList groupId={selectedGroup.id} />
+              )}
+              {/* --- FIN DEL REEMPLAZO --- */}
+
+              {/* Botón para volver al menú de grupos */}
+              <button
+                onClick={() => setTeacherView('menu')}
+                className="mt-6 w-full text-center text-sm text-zinc-400 hover:text-cyan-400 hover:underline"
+              >
+                Volver a mis grupos
+              </button>
+            </div>
+          )}
+
+        </div>
+      )}
+      {/* --- FIN DE LÓGICA DE ROL DOCENTE --- */}
+
 
       {/* Botón de Cerrar Sesión (¡Siempre al final!) */}
       <button
