@@ -1,73 +1,105 @@
-# React + TypeScript + Vite
+¡Refrescando Contexto del Proyecto PWA Colegial! (Post-MVP 1)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mi Rol: Eres mi "Asistente de programación" y "mentor técnico senior". Me estás guiando paso a paso, con paciencia, sin saltarte detalles y aplicando SOLID. Mi alias es mompirri/juanes.
 
-Currently, two official plugins are available:
+El Proyecto: Una PWA Colegial gratuita y escalable para conectar padres, estudiantes, docentes y admins.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Stack Tecnológico:
 
-## React Compiler
+Frontend: React + Vite + TypeScript + TailwindCSS
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+Backend/DB: Supabase (PostgreSQL, Auth, RLS, Edge Functions)
 
-## Expanding the ESLint configuration
+Notificaciones: Firebase Cloud Messaging (FCM)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+IA: Gemini API
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+ESTADO ACTUAL: ¡MVP 1 COMPLETADO!
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Base de Datos (Supabase): ¡ROBUSTA!
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Tablas Creadas: profiles, students, asistencia, grupos, docentes_grupos.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Seguridad (RLS): ¡Políticas 100% funcionales!
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+profiles: Usuarios solo ven/editan su propio perfil.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+students: Padres solo ven/crean/editan sus hijos. Docentes solo ven estudiantes de sus grupos.
+
+asistencia: Docentes solo pueden crear asistencia (con get_my_role()). Docentes y Padres solo pueden leer la asistencia relevante (con is_my_child()).
+
+grupos: Todos los autenticados pueden leer la lista.
+
+docentes_grupos: Docentes solo pueden leer sus asignaciones.
+
+Automatización (Funciones SQL):
+
+handle_new_user(): Trigger que asigna rol "padre" a cada nuevo usuario.
+
+get_my_role(): Función SECURITY DEFINER que arregla el bug de RLS de INSERT en asistencia.
+
+is_my_child(): Función SECURITY DEFINER que arregla el bug de RLS de SELECT en asistencia.
+
+2. Frontend (React): ¡INTELIGENTE!
+
+Auth (AuthPage.tsx): Maneja "Registro" (Sign Up) y "Login" (Sign In) de forma dinámica.
+
+Gestor de Sesión (App.tsx): Actúa como "guardia", redirigiendo a AuthPage o Dashboard según la sesión.
+
+Componentes (/components):
+
+RegisterChildForm.tsx (Formulario de Padre)
+
+StudentList.tsx (Lista de Hijos de Padre)
+
+TeacherGroupsList.tsx (Lista de Grupos de Docente)
+
+GroupStudentList.tsx (¡El de Asistencia! Con botones P/T/F)
+
+ChildAttendanceList.tsx (El historial de asistencia del Padre)
+
+3. Flujos de Usuario (¡COMPLETADOS!):
+
+Flujo "Padre": ¡100% LISTO!
+
+Se registra.
+
+Ve un Menú Limpio (parentView).
+
+Puede "Registrar Hijos" (y la lista se actualiza en tiempo real).
+
+Puede "Ver Mis Hijos".
+
+Puede "Ver Asistencias de Mis Hijos" y ver lo que el profe marcó.
+
+Flujo "Docente": ¡100% LISTO!
+
+Creado manualmente por el Admin (cambiando el rol padre -> docente).
+
+Ve un Menú Limpio (teacherView).
+
+Ve sus "Grupos Asignados".
+
+Al hacer clic, ve la "Lista de Estudiantes" de ese grupo.
+
+Puede "Tomar Asistencia" (P/T/F) y se guarda en la DB.
+
+¡ESTAMOS AQUÍ! (Próximos Pasos)
+
+¡Acabamos de completar el MVP 1 (El Flujo de Asistencia)!
+
+Falta del MVP Original:
+
+Paso 3 del MVP (Notificaciones): El padre NO recibe una Notificación Push cuando el profe marca la "Falta". La información está, pero no es "push".
+
+Lo que Falta del Proyecto General:
+
+MVP 2: Notificaciones Push (El "Círculo 2"): Conectar Firebase Cloud Messaging (FCM).
+
+MVP 3: IA Educativa: Conectar Gemini API para el chatbot.
+
+Flujo Estudiante: Crear la lógica para que el estudiante inicie sesión.
+
+Panel de Admin: Crear una UI real para que el Admin asigne grupos (en lugar de hacerlo a mano en Supabase).
+
+Tu Tarea: ¡Guíame en el siguiente paso! Estoy listo para el "Debate" y luego para empezar el MVP 2 (Notificaciones Push).
