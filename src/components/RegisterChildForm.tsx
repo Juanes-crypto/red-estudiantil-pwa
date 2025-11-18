@@ -2,15 +2,15 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-// 2. Definimos las "Props" (propiedades) que este componente
-// necesita para funcionar. ¡Necesita saber quién es el padre!
+// 2. Definimos las "Props"
 interface Props {
-  parentId: string; // Recibiremos el ID del padre que está logueado
+  parentId: string;
+  colegioId: string; // --- ¡NUEVA PROP OBLIGATORIA! ---
   onChildRegistered: () => void;
 }
 
-export default function RegisterChildForm({ parentId, onChildRegistered }: Props) {
-  // 3. Estados para el formulario
+export default function RegisterChildForm({ parentId, colegioId, onChildRegistered }: Props) {
+  // 3. Estados
   const [fullName, setFullName] = useState("");
   const [docNumber, setDocNumber] = useState("");
   const [message, setMessage] = useState("");
@@ -24,15 +24,14 @@ export default function RegisterChildForm({ parentId, onChildRegistered }: Props
 
     try {
       // 5. ¡AQUÍ! Insertamos en la tabla 'students'
-      // ¡Usando las Políticas que creamos en el PASO 25!
       const { error } = await supabase.from("students").insert({
         full_name: fullName,
         document_number: docNumber,
-        parent_id: parentId, // ¡La conexión clave!
+        parent_id: parentId,
+        colegio_id: colegioId, // --- ¡EL ESLABÓN PERDIDO! ---
       });
 
       if (error) {
-        // Si el error es por "UNIQUE constraint" (documento duplicado)
         if (error.message.includes("duplicate key")) {
           throw new Error("Ese número de documento ya está registrado.");
         }
@@ -41,9 +40,10 @@ export default function RegisterChildForm({ parentId, onChildRegistered }: Props
 
       // ¡Éxito!
       setMessage("¡Hijo registrado con éxito!");
-      setFullName(""); // Limpiamos el formulario
+      setFullName("");
       setDocNumber("");
       onChildRegistered();
+      
     } catch (error: any) {
       console.error(error.message);
       setMessage(`Error: ${error.message}`);
@@ -84,12 +84,9 @@ export default function RegisterChildForm({ parentId, onChildRegistered }: Props
           </label>
           <input
             id="docNumber"
-            type="text" // Sigue siendo 'text' para evitar flechas
-            // --- MAGIA NUEVA AQUÍ ---
-            inputMode="numeric" // Pide el TECLADO NUMÉRICO en celulares
-            pattern="[0-9]*" // Regla: Solo acepta dígitos del 0 al 9
-            // --- FIN DE LA MAGIA ---
-
+            type="text" 
+            inputMode="numeric" 
+            pattern="[0-9]*" 
             value={docNumber}
             onChange={(e) => setDocNumber(e.target.value)}
             className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white"
@@ -101,7 +98,7 @@ export default function RegisterChildForm({ parentId, onChildRegistered }: Props
         <button
           type="submit"
           className="w-full rounded-lg bg-cyan-600 px-5 py-2.5 text-center font-medium text-white hover:bg-cyan-700"
-          disabled={loading} // Se deshabilita mientras carga
+          disabled={loading}
         >
           {loading ? "Registrando..." : "Registrar Hijo"}
         </button>
