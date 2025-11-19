@@ -8,6 +8,7 @@ import GroupStudentList from '../components/GroupStudentList'
 import ChildAttendanceList from '../components/ChildAttendanceList'
 import AdminStudentManager from '../components/AdminStudentManager'
 import AdminTeacherManager from '../components/AdminTeacherManager'
+import AdminGroupManager from '../components/AdminGroupManager'
 
 // Interfaz del Perfil
 interface Profile {
@@ -210,7 +211,7 @@ export default function Dashboard() {
           {adminView === 'groups' && (
             <div className="text-center">
               <h2 className="mb-4 text-xl font-semibold text-white">Gestión de Grupos</h2>
-              <p className="text-zinc-400">Aquí podrás crear grupos y promover estudiantes.</p>
+              <AdminGroupManager/>
               <button onClick={() => setAdminView('menu')} className="mt-6 text-sm text-zinc-400 hover:text-white hover:underline">Volver al menú</button>
             </div>
           )}
