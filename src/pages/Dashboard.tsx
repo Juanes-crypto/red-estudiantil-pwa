@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { User } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 import RegisterChildForm from '../components/RegisterChildForm'
 import StudentList from '../components/StudentList'
 import TeacherGroupsList from '../components/TeacherGroupsList'
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [parentView, setParentView] = useState<'menu' | 'register' | 'list' | 'attendance'>('menu')
   const [teacherView, setTeacherView] = useState<'menu' | 'attendance'>('menu')
   const [selectedGroup, setSelectedGroup] = useState<{ id: string, name: string } | null>(null)
-  
+
   const [adminView, setAdminView] = useState<'menu' | 'students' | 'teachers' | 'groups'>('menu')
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function Dashboard() {
         setUser(user)
         const { data: profileData, error } = await supabase
           .from('profiles')
-          .select('full_name, role, colegio_id') 
+          .select('full_name, role, colegio_id')
           .eq('id', user.id)
           .single()
 
@@ -78,7 +78,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center bg-zinc-900 p-8 text-white">
-      
+
       <div className="w-full max-w-md">
         <h1 className="mb-2 text-center text-3xl font-bold text-green-400">
           ¡Estás Dentro!
@@ -130,7 +130,7 @@ export default function Dashboard() {
       {/* --- INICIO DE LÓGICA DE ROL DOCENTE --- */}
       {profile && profile.role === 'docente' && (
         <div className="mt-8 w-full max-w-md space-y-6">
-           {teacherView === 'menu' && (
+          {teacherView === 'menu' && (
             <div>
               <h2 className="mb-4 text-center text-xl font-semibold text-white">Mis Grupos Asignados</h2>
               <TeacherGroupsList onSelectGroup={handleGroupSelect} />
@@ -151,14 +151,14 @@ export default function Dashboard() {
       {/* --- INICIO DE LÓGICA DE ROL ADMIN --- */}
       {profile && profile.role === 'admin' && (
         <div className="mt-8 w-full max-w-md space-y-6">
-          
+
           {/* MENÚ PRINCIPAL DE ADMIN */}
           {adminView === 'menu' && (
             <div className="space-y-4">
               <h2 className="mb-4 text-center text-xl font-semibold text-white">
                 Panel de Administración
               </h2>
-              
+
               <button
                 onClick={() => setAdminView('students')}
                 className="flex w-full items-center justify-between rounded-lg bg-indigo-600 px-5 py-4 text-left font-medium text-white hover:bg-indigo-700"
@@ -189,11 +189,11 @@ export default function Dashboard() {
           {adminView === 'students' && (
             <div className="text-center">
               <h2 className="mb-4 text-xl font-semibold text-white">Gestión de Estudiantes</h2>
-              
+
               {/* --- ¡AQUÍ ESTÁ LA MAGIA! --- */}
               <AdminStudentManager />
               {/* --- FIN DE LA MAGIA --- */}
-              
+
               <button onClick={() => setAdminView('menu')} className="mt-6 text-sm text-zinc-400 hover:text-white hover:underline">Volver al menú</button>
             </div>
           )}
@@ -211,7 +211,7 @@ export default function Dashboard() {
           {adminView === 'groups' && (
             <div className="text-center">
               <h2 className="mb-4 text-xl font-semibold text-white">Gestión de Grupos</h2>
-              <AdminGroupManager/>
+              <AdminGroupManager />
               <button onClick={() => setAdminView('menu')} className="mt-6 text-sm text-zinc-400 hover:text-white hover:underline">Volver al menú</button>
             </div>
           )}

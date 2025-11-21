@@ -6,8 +6,9 @@ import { supabase } from './lib/supabaseClient'
 import AuthPage from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 // 4. Importamos el tipo 'Session' para TypeScript
-import { Session } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 import { useNotifications } from './hooks/useNotifications'
+import InstallPrompt from './components/InstallPrompt'
 
 function App() {
   // 5. Creamos un "estado" para guardar la sesión del usuario
@@ -37,9 +38,10 @@ function App() {
 
   // 7. EL RENDER LÓGICO (El Guardia)
   // Si NO hay sesión (session es null), muestra la página de Auth.
-  // Si SÍ hay sesión, muestra el Dashboard.
+  // Si SÍ hay sesión, muestra
   return (
-    <div>
+    <div className="container mx-auto px-4">
+      <InstallPrompt />
       {!session ? <AuthPage /> : <Dashboard />}
     </div>
   )
