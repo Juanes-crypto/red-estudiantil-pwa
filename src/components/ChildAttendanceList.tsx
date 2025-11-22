@@ -32,7 +32,7 @@ export default function ChildAttendanceList({ parentId }: Props) {
       try {
         setLoading(true)
         setError(null)
-        
+
         // 6. ¡LA CONSULTA MÁGICA! (¡AHORA SÍ, LIMPIA!)
         const { data, error } = await supabase
           .from('asistencia')
@@ -47,10 +47,10 @@ export default function ChildAttendanceList({ parentId }: Props) {
           .order('created_at', { ascending: false })
 
         if (error) throw error
-        
-        const validData = data.filter(d => d.students) as AttendanceRecord[]
+
+        const validData = (data || []).filter(d => d.students) as unknown as AttendanceRecord[]
         setAttendance(validData)
-        
+
       } catch (error: any) {
         // ¡Mejoramos el log de error!
         console.error("Error al cargar asistencias:", error)
@@ -66,7 +66,7 @@ export default function ChildAttendanceList({ parentId }: Props) {
   }, [parentId]) // Se re-ejecuta si el parentId cambia
 
   // 7. RENDER (Lo que se ve)
-  
+
   // (Tus funciones 'formatDate' y 'getStatusColor' están perfectas)
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('es-CO', {
@@ -114,7 +114,7 @@ export default function ChildAttendanceList({ parentId }: Props) {
                   Registrado por: {record.teacher_id?.full_name || 'N/A'}
                 </p>
               </div>
-              <span 
+              <span
                 className={`rounded-full px-3 py-1 text-sm font-medium text-white ${getStatusColor(record.status)}`}
               >
                 {record.status.charAt(0).toUpperCase() + record.status.slice(1)}

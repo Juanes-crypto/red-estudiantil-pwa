@@ -6,14 +6,14 @@ import { supabase } from './lib/supabaseClient'
 import AuthPage from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 // 4. Importamos el tipo 'Session' para TypeScript
-import { Session } from '@supabase/supabase-js'
+// 4. Importamos el tipo 'Session' para TypeScript
+import type { Session } from '@supabase/supabase-js'
 import { useNotifications } from './hooks/useNotifications'
 
 function App() {
   // 5. Creamos un "estado" para guardar la sesión del usuario
   // (Puede ser 'Session' o 'null' si no está logueado)
   const [session, setSession] = useState<Session | null>(null)
-
   useNotifications();
 
   // 6. ¡EL NÚCLEO! Esto se ejecuta UNA SOLA VEZ cuando la app carga
