@@ -1,0 +1,82 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "outputDirectory": "dist",
+                "installCommand": "npm install",
+                "buildCommand": "npm run build"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/_icons/(.*)",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            },
+            "continue": true
+        },
+        {
+            "src": "/assets/(.*)",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            },
+            "continue": true
+        },
+        {
+            "src": "/firebase-messaging-sw.js",
+            "headers": {
+                "cache-control": "public, max-age=0, must-revalidate",
+                "Service-Worker-Allowed": "/"
+            },
+            "continue": true
+        },
+        {
+            "src": "/sw.js",
+            "headers": {
+                "cache-control": "public, max-age=0, must-revalidate",
+                "Service-Worker-Allowed": "/"
+            },
+            "continue": true
+        },
+        {
+            "src": "/workbox-*.js",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            },
+            "continue": true
+        },
+        {
+            "src": "/manifest.webmanifest",
+            "headers": {
+                "cache-control": "public, max-age=0, must-revalidate",
+                "Content-Type": "application/manifest+json"
+            },
+            "continue": true
+        },
+        {
+            "src": "/favicon.ico",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            },
+            "continue": true
+        },
+        {
+            "src": "/(.*\\.(?:js|css|html|webp|gif|png|jpg|jpeg|svg|ico|json|txt))$",
+            "headers": {
+                "cache-control": "public, max-age=31536000, immutable"
+            },
+            "continue": true
+        },
+        {
+            "handle": "filesystem"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
+        }
+    ]
+}
