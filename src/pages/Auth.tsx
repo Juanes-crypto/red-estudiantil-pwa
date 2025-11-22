@@ -45,7 +45,7 @@ export default function AuthPage() {
         setLoadingColegios(false);
       }
     };
-    
+
     fetchColegios();
   }, []); // El '[]' vacío significa "ejecuta esto solo al inicio"
   // --- FIN DE LO NUEVO ---
@@ -62,11 +62,11 @@ export default function AuthPage() {
 
     try {
       setMensaje('Registrando...') // Damos feedback al usuario
-      
+
       // ¡AQUÍ ESTÁ LA MAGIA "MULTI-TENANT"!
       // Pasamos el 'colegio_id' en 'options.data'.
       // Nuestro trigger en la DB (que arreglaremos AHORA) leerá esto.
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: email,
         password: password,
         options: {
@@ -80,7 +80,7 @@ export default function AuthPage() {
 
       // ¡Éxito!
       setMensaje('¡Registro exitoso! Revisa tu email para confirmar.')
-      
+
       // ¡Ya no hacemos nada más!
       // El Trigger 'handle_new_user' (Paso 73)
       // se encargará de crear el 'profile' con el 'colegio_id' correcto.
@@ -94,14 +94,14 @@ export default function AuthPage() {
 
   // NUEVA FUNCIÓN: INICIAR SESIÓN (Sin cambios)
   const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault() 
+    e.preventDefault()
     try {
       setMensaje('Iniciando sesión...')
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       })
-      if (error) throw error 
+      if (error) throw error
       setMensaje('¡Bienvenido!')
     } catch (error: any) {
       console.error(error.message)
