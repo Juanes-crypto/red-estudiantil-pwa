@@ -24,14 +24,15 @@ firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
 // 5. Manejar notificaciones en segundo plano (Opcional, pero útil para debugging)
-messaging.onBackgroundMessage(function(payload) {
+messaging.onBackgroundMessage(function (payload) {
   console.log('[firebase-messaging-sw.js] Notificación recibida en segundo plano:', payload);
-  
+
   // Personalizamos el título y cuerpo de la notificación
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/vite.svg' // Puedes poner tu logo aquí
+    icon: '/pwa-192x192.png', // Logo de Red Estudiantil
+    badge: '/pwa-192x192.png'
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

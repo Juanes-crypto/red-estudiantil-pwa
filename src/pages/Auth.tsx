@@ -1,41 +1,29 @@
-// PASO 1: Importar las herramientas que necesitamos
-import { useState, useEffect } from 'react' // ¡Añadimos useEffect!
-// ¡Importamos nuestra "tubería" (el cliente) de Supabase!
-import { supabase } from '../lib/supabaseClient'
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
-// --- ¡NUEVO! ---
-// Definimos el "tipo" de un Colegio
 interface Colegio {
   id: string;
   name: string;
 }
-// --- FIN DE LO NUEVO ---
 
 export default function AuthPage() {
-  // PASO 2: "Estado" de React
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [mensaje, setMensaje] = useState('')
-  const [isLogin, setIsLogin] = useState(false)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [isLogin, setIsLogin] = useState(false);
+  const [colegios, setColegios] = useState<Colegio[]>([]);
+  const [selectedColegio, setSelectedColegio] = useState('');
+  const [loadingColegios, setLoadingColegios] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // --- ¡NUEVOS ESTADOS! ---
-  const [colegios, setColegios] = useState<Colegio[]>([])
-  const [selectedColegio, setSelectedColegio] = useState('')
-  const [loadingColegios, setLoadingColegios] = useState(true)
-  // --- FIN DE LO NUEVO ---
-
-  // --- ¡NUEVO useEffect! ---
-  // Se ejecuta UNA VEZ cuando la página carga
-  // para traer la lista de colegios.
   useEffect(() => {
     const fetchColegios = async () => {
       try {
         setLoadingColegios(true);
-        // ¡Gracias al Paso 71, esto es público!
         const { data, error } = await supabase
           .from('colegios')
           .select('id, name')
-          .order('name', { ascending: true }); // Los ordenamos alfabéticamente
+          .order('name', { ascending: true });
 
         if (error) throw error;
         setColegios(data || []);
@@ -47,25 +35,20 @@ export default function AuthPage() {
     };
 
     fetchColegios();
-  }, []); // El '[]' vacío significa "ejecuta esto solo al inicio"
-  // --- FIN DE LO NUEVO ---
+  }, []);
 
-  // PASO 3: La función MÁGICA (¡ACTUALIZADA!)
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault() // Evita que la página se recargue
+    e.preventDefault();
 
-    // Validación
     if (!selectedColegio) {
       setMensaje('Error: Debes seleccionar un colegio para registrarte.');
       return;
     }
 
     try {
-      setMensaje('Registrando...') // Damos feedback al usuario
+      setLoading(true);
+      setMensaje('');
 
-      // ¡AQUÍ ESTÁ LA MAGIA "MULTI-TENANT"!
-      // Pasamos el 'colegio_id' en 'options.data'.
-      // Nuestro trigger en la DB (que arreglaremos AHORA) leerá esto.
       const { error } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -74,148 +57,224 @@ export default function AuthPage() {
             colegio_id: selectedColegio
           }
         }
-      })
+      });
 
-      if (error) throw error // Si hay un error, saltamos al 'catch'
+      if (error) throw error;
 
-      // ¡Éxito!
-      setMensaje('¡Registro exitoso! Revisa tu email para confirmar.')
-
-      // ¡Ya no hacemos nada más!
-      // El Trigger 'handle_new_user' (Paso 73)
-      // se encargará de crear el 'profile' con el 'colegio_id' correcto.
-
+      setMensaje('Registro exitoso. Revisa tu email para confirmar.');
     } catch (error: any) {
-      // Manejo de errores
-      console.error(error.message)
-      setMensaje(`Error: ${error.message}`)
+      console.error(error.message);
+      setMensaje(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  // NUEVA FUNCIÓN: INICIAR SESIÓN (Sin cambios)
   const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+
     try {
-      setMensaje('Iniciando sesión...')
+      setLoading(true);
+      setMensaje('');
+
       const { error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
-      })
-      if (error) throw error
-      setMensaje('¡Bienvenido!')
+      });
+
+      if (error) throw error;
+      setMensaje('Bienvenido');
     } catch (error: any) {
-      console.error(error.message)
+      console.error(error.message);
       if (error.message.includes('Invalid login credentials')) {
-        setMensaje('Error: Email o contraseña incorrectos.')
+        setMensaje('Error: Email o contraseña incorrectos.');
       } else {
-        setMensaje(`Error: ${error.message}`)
+        setMensaje(`Error: ${error.message}`);
       }
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  // PASO 4: El HTML (JSX) con estilos de Tailwind
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-zinc-900 text-white">
-      <div className="w-full max-w-sm rounded-lg border border-zinc-700 bg-zinc-800 p-8 shadow-lg">
-
-        <h1 className="mb-6 text-center text-3xl font-bold text-cyan-400">
-          {isLogin ? 'Inicia Sesión' : 'Crea tu cuenta'}
-        </h1>
-        <p className="mb-6 text-center text-sm text-zinc-400">
-          {isLogin ? 'Bienvenido de vuelta' : 'Ingresa tus datos para registrarte'}
-        </p>
-
-        <form onSubmit={isLogin ? handleSignIn : handleSignUp}>
-          {/* Email */}
-          <div className="mb-4">
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-300">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white placeholder-zinc-400 focus:border-cyan-500 focus:ring-cyan-500"
-              placeholder="tu@email.com"
-              required
-            />
-          </div>
-
-          {/* Password */}
-          <div className="mb-4"> {/* (Cambiado a mb-4) */}
-            <label htmlFor="password" className="mb-2 block text-sm font-medium text-zinc-300">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white placeholder-zinc-400 focus:border-cyan-500 focus:ring-cyan-500"
-              placeholder="••••••••"
-              minLength={6}
-              required
-            />
-          </div>
-
-          {/* --- ¡NUEVO BLOQUE! --- */}
-          {/* Solo mostramos el selector de colegio en modo "Registro" */}
-          {!isLogin && (
-            <div className="mb-6">
-              <label htmlFor="colegio" className="mb-2 block text-sm font-medium text-zinc-300">
-                Tu Colegio
-              </label>
-              <select
-                id="colegio"
-                value={selectedColegio}
-                onChange={(e) => setSelectedColegio(e.target.value)}
-                className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white placeholder-zinc-400 focus:border-cyan-500 focus:ring-cyan-500"
-                required
-                disabled={loadingColegios} // Se deshabilita mientras cargan
-              >
-                <option value="" disabled>
-                  {loadingColegios ? 'Cargando colegios...' : 'Selecciona tu colegio'}
-                </option>
-                {colegios.map((colegio) => (
-                  <option key={colegio.id} value={colegio.id}>
-                    {colegio.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {/* --- FIN DEL NUEVO BLOQUE --- */}
-
-
-          {/* Botón de Enviar */}
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-cyan-600 px-5 py-2.5 text-center font-medium text-white hover:bg-cyan-700 focus:outline-none focus:ring-4 focus:ring-cyan-800"
-            // Deshabilitamos el botón si están cargando los colegios
-            disabled={!isLogin && loadingColegios}
-          >
-            {isLogin ? 'Iniciar Sesión' : 'Registrarme'}
-          </button>
-        </form>
-
-        {/* Mensaje de feedback */}
-        {mensaje && (
-          <p className="mt-4 text-center text-sm font-medium text-green-400">
-            {mensaje}
-          </p>
-        )}
-
-        {/* El "interruptor" para cambiar de modo */}
-        <button
-          onClick={() => setIsLogin(!isLogin)} // Invierte el estado
-          className="mt-6 w-full text-center text-sm text-zinc-400 hover:text-cyan-400 hover:underline"
-        >
-          {isLogin
-            ? '¿No tienes una cuenta? Regístrate'
-            : '¿Ya tienes una cuenta? Inicia Sesión'}
-        </button>
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      {/* Decorative Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-72 h-72 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
       </div>
+
+      {/* Main Card */}
+      <div className="relative w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
+          {/* Header Section */}
+          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-10">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4">
+                <span className="text-3xl font-bold text-blue-600">RE</span>
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Red Estudiantil
+              </h1>
+              <p className="text-blue-100 text-sm">
+                Plataforma de gestión escolar
+              </p>
+            </div>
+          </div>
+
+          {/* Form Section */}
+          <div className="px-8 py-8">
+            {/* Tab Selector */}
+            <div className="flex rounded-xl bg-gray-100 p-1 mb-8">
+              <button
+                onClick={() => setIsLogin(true)}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${isLogin
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }`}
+              >
+                Iniciar Sesión
+              </button>
+              <button
+                onClick={() => setIsLogin(false)}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${!isLogin
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }`}
+              >
+                Registro
+              </button>
+            </div>
+
+            <form onSubmit={isLogin ? handleSignIn : handleSignUp} className="space-y-5">
+              {/* Email Field */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Correo electrónico
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="tu@email.com"
+                  required
+                />
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="••••••••"
+                  minLength={6}
+                  required
+                />
+              </div>
+
+              {/* School Selector (Only for Register) */}
+              {!isLogin && (
+                <div>
+                  <label htmlFor="colegio" className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecciona tu colegio
+                  </label>
+                  <select
+                    id="colegio"
+                    value={selectedColegio}
+                    onChange={(e) => setSelectedColegio(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    required
+                    disabled={loadingColegios}
+                  >
+                    <option value="" disabled>
+                      {loadingColegios ? 'Cargando colegios...' : 'Selecciona tu colegio'}
+                    </option>
+                    {colegios.map((colegio) => (
+                      <option key={colegio.id} value={colegio.id}>
+                        {colegio.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading || (!isLogin && loadingColegios)}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3.5 rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Procesando...
+                  </span>
+                ) : (
+                  <span>{isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}</span>
+                )}
+              </button>
+            </form>
+
+            {/* Message */}
+            {mensaje && (
+              <div className={`mt-4 p-4 rounded-xl text-sm font-medium ${mensaje.includes('Error') || mensaje.includes('incorrectos')
+                  ? 'bg-red-50 text-red-700 border border-red-100'
+                  : 'bg-green-50 text-green-700 border border-green-100'
+                }`}>
+                {mensaje}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 py-6 bg-gray-50 border-t border-gray-100">
+            <p className="text-center text-sm text-gray-600">
+              {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+              {' '}
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setMensaje('');
+                }}
+                className="font-medium text-blue-600 hover:text-cyan-600 transition"
+              >
+                {isLogin ? 'Regístrate aquí' : 'Inicia sesión'}
+              </button>
+            </p>
+          </div>
+        </div>
+
+        {/* Footer Text */}
+        <p className="text-center text-sm text-gray-500 mt-6">
+          © 2025 Red Estudiantil. Conectando educación.
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
-  )
+  );
 }

@@ -2,7 +2,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts"; 
+import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 console.log("🤖 El Robot de Notificaciones se ha despertado!");
 
@@ -22,7 +22,7 @@ function pemToBinary(pem: string) {
     .replace(/-----BEGIN PRIVATE KEY-----/g, "")
     .replace(/-----END PRIVATE KEY-----/g, "")
     .replace(/\s/g, "");
-  
+
   const binaryString = atob(b64);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
@@ -34,7 +34,7 @@ function pemToBinary(pem: string) {
 serve(async (req) => {
   try {
     const { record } = await req.json();
-    
+
     if (!record) {
       return new Response("No hay registro para procesar", { status: 200 });
     }
@@ -69,15 +69,26 @@ serve(async (req) => {
       return new Response("Padre sin token", { status: 200 });
     }
 
+    // --- BUSCAR NOMBRE DEL PROFESOR ---
+    const { data: teacher, error: teacherError } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", record.teacher_id)
+      .single();
+
+    if (teacherError || !teacher) {
+      console.warn("⚠️ No se pudo obtener el nombre del profesor:", teacherError?.message);
+    }
+
     // --- AUTENTICACIÓN GOOGLE (CORREGIDO) ---
-    
+
     // 1. Preparamos la llave
     const cryptoKey = await crypto.subtle.importKey(
-        "pkcs8",
-        pemToBinary(serviceAccount.private_key),
-        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-        false,
-        ["sign"]
+      "pkcs8",
+      pemToBinary(serviceAccount.private_key),
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"]
     );
 
     // 2. Creamos el JWT
@@ -88,7 +99,7 @@ serve(async (req) => {
         iss: serviceAccount.client_email,
         scope: "https://www.googleapis.com/auth/firebase.messaging",
         aud: "https://oauth2.googleapis.com/token",
-        exp: getNumericDate(60 * 60), 
+        exp: getNumericDate(60 * 60),
         iat: getNumericDate(0),
       },
       cryptoKey // <--- ¡CORRECCIÓN MAESTRA! Sin llaves { } rodeándolo
@@ -103,30 +114,34 @@ serve(async (req) => {
         assertion: jwt,
       }),
     });
-    
+
     const googleAuthData = await googleAuthResponse.json();
     const accessToken = googleAuthData.access_token;
-    
+
     if (!accessToken) {
-        console.error("❌ Fallo autenticación Google:", googleAuthData);
-        return new Response("Fallo autenticación Google", { status: 500 });
+      console.error("❌ Fallo autenticación Google:", googleAuthData);
+      return new Response("Fallo autenticación Google", { status: 500 });
     }
 
     // --- ENVIAR NOTIFICACIÓN ---
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-    const bodyText = record.status === 'tarde' ? "llegó tarde a la clase." : "ha sido marcado con falta.";
+
+    // Construir mensaje con nombre del profesor
+    const statusText = record.status === 'tarde' ? 'llegó tarde' : 'faltó';
+    const teacherName = teacher?.full_name || 'Un profesor';
+    const notificationBody = `${student.full_name} ${statusText} a la clase. Profesor: ${teacherName}`;
 
     const mensaje = {
       message: {
         token: parent.fcm_token,
         notification: {
           title: `🔔 Alerta de Asistencia`,
-          body: `${student.full_name} ${bodyText}`,
+          body: notificationBody,
         },
         // Añadimos URL para que al hacer clic abra la app
         webpush: {
           fcm_options: {
-            link: "http://localhost:5173"
+            link: Deno.env.get("APP_URL") || "https://red-estudiantil-pwa.vercel.app"
           }
         }
       },
