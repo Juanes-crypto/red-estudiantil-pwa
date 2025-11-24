@@ -64,6 +64,10 @@
 - Ver lista de hijos
 - Ver historial de asistencia de cada hijo
 - Recibir notificaciones push
+- **Enviar Excusas Médicas:**
+  - Seleccionar hijo
+  - Seleccionar destinatarios (profesores específicos)
+  - Adjuntar motivo y fecha
 
 **Profesor:**
 - Login con cuenta asignada por admin
@@ -71,6 +75,9 @@
 - Ver lista de estudiantes por grupo
 - Tomar asistencia (Presente/Tarde/Falta)
 - Sistema marca automáticamente con colores
+- **Gestionar Excusas:**
+  - Ver excusas recibidas (filtradas por destinatario)
+  - Ver detalles del estudiante y motivo
 
 **Admin:**
 - Gestionar estudiantes
@@ -198,11 +205,13 @@ src/
 #### Base de Datos - Tablas Existentes
 ```sql
 -- NO modificar estructura de estas tablas:
-- profiles (columnas: id, email, full_name, role, colegio_id, fcm_token)
+- profiles (columnas: id, full_name, role, colegio_id, fcm_token) -- NOTA: email no existe aquí
 - students (columnas: id, full_name, parent_id, grupo_id, colegio_id, user_id)
 - asistencia (columnas: id, student_id, teacher_id, status, created_at)
-- grupos (columnas: id, nombre, grado, colegio_id)
-- docentes_grupos (columnas: id, teacher_id, grupo_id)
+- grupos (columnas: id, name, grado, colegio_id)
+- docentes_grupos (columnas: docente_id, grupo_id) -- NOTA: docente_id
+- medical_excuses (columnas: id, student_id, parent_id, date, reason)
+- excuse_recipients (columnas: id, excuse_id, teacher_id)
 ```
 
 **PUEDE agregarse:**

@@ -18,22 +18,35 @@ function App() {
 
   // 6. ¡EL NÚCLEO! Esto se ejecuta UNA SOLA VEZ cuando la app carga
   useEffect(() => {
-    // Primero, intentamos obtener la sesión actual (si recargó la pág)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
+    const checkAuth = async () => {
+      // Primero verificar si hay sesión de estudiante (custom auth)
+      const { getCurrentSession } = await import('./lib/studentAuth');
+      const studentSession = getCurrentSession();
 
-    // Segundo, "escuchamos" cambios en la autenticación
-    // (Ej: si inicia sesión, cierra sesión, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session)
+      if (studentSession) {
+        // Crear sesión "fake" para que App.tsx muestre Dashboard
+        setSession({ user: { id: studentSession.studentId } } as Session);
+        return;
       }
-    )
 
-    // "Limpiamos" el "escuchador" cuando el componente se destruye
-    return () => subscription.unsubscribe()
-  }, []) // El '[]' vacío significa "ejecuta esto solo al inicio"
+      // Si no hay sesión de estudiante, verificar Supabase Auth
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+      });
+
+      // Escuchar cambios en la autenticación de Supabase
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setSession(session);
+        }
+      );
+
+      // Limpieza
+      return () => subscription.unsubscribe();
+    };
+
+    checkAuth();
+  }, []); // El '[]' vacío significa "ejecuta esto solo al inicio"
 
   // 7. EL RENDER LÓGICO (El Guardia)
   // Si NO hay sesión (session es null), muestra la página de Auth.

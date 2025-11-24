@@ -172,7 +172,7 @@ export default function AttendanceGrid({ groupId, teacherId }: Props) {
             </div>
 
             {/* Grid tipo Excel */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto pb-24">
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-100">
@@ -195,86 +195,92 @@ export default function AttendanceGrid({ groupId, teacherId }: Props) {
                         </tr>
                     </thead>
                     <tbody>
-                        {students.map((student) => (
-                            <tr key={student.id} className="hover:bg-gray-50">
-                                <td className="sticky left-0 z-10 bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">
-                                    {student.full_name}
-                                </td>
-                                {weekDays.map((date, idx) => {
-                                    const status = getCellStatus(student.id, date);
-                                    const isToday = date.toDateString() === today;
-                                    const isSelected = selectedCell?.studentId === student.id && selectedCell?.date === date.toDateString();
+                        {students.map((student, studentIndex) => {
+                            // Detectar si es uno de los últimos 2 estudiantes
+                            const isLastRows = studentIndex >= students.length - 2;
 
-                                    return (
-                                        <td
-                                            key={idx}
-                                            className={`border border-gray-300 relative ${isToday ? 'bg-blue-50' : ''
-                                                }`}
-                                        >
-                                            <button
-                                                onClick={() => {
-                                                    // Siempre abrir popup (para poder cambiar asistencia)
-                                                    setSelectedCell({ studentId: student.id, date: date.toDateString() });
-                                                }}
-                                                className={`w-full h-12 text-sm font-bold flex items-center justify-center ${getCellColor(status)}`}
+                            return (
+                                <tr key={student.id} className="hover:bg-gray-50">
+                                    <td className="sticky left-0 z-10 bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900">
+                                        {student.full_name}
+                                    </td>
+                                    {weekDays.map((date, idx) => {
+                                        const status = getCellStatus(student.id, date);
+                                        const isToday = date.toDateString() === today;
+                                        const isSelected = selectedCell?.studentId === student.id && selectedCell?.date === date.toDateString();
+
+                                        return (
+                                            <td
+                                                key={idx}
+                                                className={`border border-gray-300 relative ${isToday ? 'bg-blue-50' : ''
+                                                    }`}
                                             >
-                                                {status || ''}
-                                            </button>
+                                                <button
+                                                    onClick={() => {
+                                                        // Siempre abrir popup (para poder cambiar asistencia)
+                                                        setSelectedCell({ studentId: student.id, date: date.toDateString() });
+                                                    }}
+                                                    className={`w-full h-12 text-sm font-bold flex items-center justify-center ${getCellColor(status)}`}
+                                                >
+                                                    {status || ''}
+                                                </button>
 
-                                            {/* Popup con botones */}
-                                            {isSelected && (
-                                                <>
-                                                    {/* Backdrop para cerrar al hacer click fuera */}
-                                                    <div
-                                                        className="fixed inset-0 z-10"
-                                                        onClick={() => setSelectedCell(null)}
-                                                    ></div>
+                                                {/* Popup con botones - Posicionamiento inteligente */}
+                                                {isSelected && (
+                                                    <>
+                                                        {/* Backdrop para cerrar al hacer click fuera */}
+                                                        <div
+                                                            className="fixed inset-0 z-10"
+                                                            onClick={() => setSelectedCell(null)}
+                                                        ></div>
 
-                                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-20 flex gap-2 whitespace-nowrap">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                markAttendance(student.id, date, 'presente');
-                                                            }}
-                                                            className="px-3 py-2 text-xs font-medium bg-green-500 text-white rounded hover:bg-green-600"
-                                                        >
-                                                            Presente
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                markAttendance(student.id, date, 'tarde');
-                                                            }}
-                                                            className="px-3 py-2 text-xs font-medium bg-yellow-500 text-gray-900 rounded hover:bg-yellow-600"
-                                                        >
-                                                            Tarde
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                markAttendance(student.id, date, 'falta');
-                                                            }}
-                                                            className="px-3 py-2 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600"
-                                                        >
-                                                            Falta
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setSelectedCell(null);
-                                                            }}
-                                                            className="px-2 py-2 text-xs text-gray-600 hover:text-gray-900"
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
+                                                        <div className={`absolute ${isLastRows ? 'bottom-full mb-1' : 'top-full mt-1'
+                                                            } left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-20 flex gap-2 whitespace-nowrap`}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    markAttendance(student.id, date, 'presente');
+                                                                }}
+                                                                className="px-3 py-2 text-xs font-medium bg-green-500 text-white rounded hover:bg-green-600"
+                                                            >
+                                                                Presente
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    markAttendance(student.id, date, 'tarde');
+                                                                }}
+                                                                className="px-3 py-2 text-xs font-medium bg-yellow-500 text-gray-900 rounded hover:bg-yellow-600"
+                                                            >
+                                                                Tarde
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    markAttendance(student.id, date, 'falta');
+                                                                }}
+                                                                className="px-3 py-2 text-xs font-medium bg-red-500 text-white rounded hover:bg-red-600"
+                                                            >
+                                                                Falta
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedCell(null);
+                                                                }}
+                                                                className="px-2 py-2 text-xs text-gray-600 hover:text-gray-900"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
             </div>

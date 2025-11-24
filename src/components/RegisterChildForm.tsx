@@ -23,30 +23,39 @@ export default function RegisterChildForm({ parentId, colegioId, onChildRegister
     setMessage("");
 
     try {
-      // 5. ¡AQUÍ! Insertamos en la tabla 'students'
-      const { error } = await supabase.from("students").insert({
+      // Importar la función de hash dinámicamente
+      const { hashPassword } = await import('../lib/studentAuth');
+
+      // Generar hash de la contraseña (contraseña inicial = documento)
+      const passwordHash = await hashPassword(docNumber);
+
+      // Crear registro del estudiante con contraseña hasheada
+      const { error: studentError } = await supabase.from("students").insert({
         full_name: fullName,
         document_number: docNumber,
+        password_hash: passwordHash,
         parent_id: parentId,
-        colegio_id: colegioId, // --- ¡EL ESLABÓN PERDIDO! ---
+        colegio_id: colegioId,
       });
 
-      if (error) {
-        if (error.message.includes("duplicate key")) {
+      if (studentError) {
+        if (studentError.message.includes("duplicate key")) {
           throw new Error("Ese número de documento ya está registrado.");
         }
-        throw error;
+        throw studentError;
       }
 
       // ¡Éxito!
-      setMessage("¡Hijo registrado con éxito!");
+      setMessage("¡Hijo registrado! Puede ingresar con su documento como contraseña.");
       setFullName("");
       setDocNumber("");
       onChildRegistered();
-      
+
     } catch (error: any) {
-      console.error(error.message);
-      setMessage(`Error: ${error.message}`);
+      console.error('Error completo:', error);
+      console.error('Mensaje:', error.message);
+      console.error('Código:', error.code);
+      setMessage(`Error: ${error.message || 'Error desconocido al registrar'}`);
     } finally {
       setLoading(false);
     }
@@ -84,9 +93,9 @@ export default function RegisterChildForm({ parentId, colegioId, onChildRegister
           </label>
           <input
             id="docNumber"
-            type="text" 
-            inputMode="numeric" 
-            pattern="[0-9]*" 
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={docNumber}
             onChange={(e) => setDocNumber(e.target.value)}
             className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white"
