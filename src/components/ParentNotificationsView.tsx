@@ -8,7 +8,6 @@ interface Props {
 export default function ParentNotificationsView({ parentId }: Props) {
     const [announcements, setAnnouncements] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [students, setStudents] = useState<any[]>([]);
 
     useEffect(() => {
         loadData();
@@ -19,7 +18,6 @@ export default function ParentNotificationsView({ parentId }: Props) {
         try {
             // 1. Obtener estudiantes del padre
             const myStudents = await StudentService.getByParent(parentId);
-            setStudents(myStudents);
 
             // 2. Obtener anuncios para cada estudiante
             // Nota: Esto podría optimizarse en backend, pero por ahora iteramos
@@ -94,8 +92,8 @@ export default function ParentNotificationsView({ parentId }: Props) {
                     {announcements.map((announcement, index) => (
                         <div key={`${announcement.id}-${index}`} className="bg-white border border-neutral-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
                             <div className={`absolute top-0 left-0 w-1 h-full ${announcement.type === 'exam' ? 'bg-red-500' :
-                                    announcement.type === 'homework' ? 'bg-brand-500' :
-                                        'bg-cyan-500'
+                                announcement.type === 'homework' ? 'bg-brand-500' :
+                                    'bg-cyan-500'
                                 }`}></div>
 
                             <div className="flex items-start justify-between mb-3">

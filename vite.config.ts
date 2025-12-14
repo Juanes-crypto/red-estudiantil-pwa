@@ -21,7 +21,7 @@ export default defineConfig({
       manifest: {
         name: 'Red Estudiantil',
         short_name: 'RedEstudiantil',
-        gcm_sender_id: '103953800507',
+        // Nota: gcm_sender_id debe estar en public/manifest.json para Firebase
         description: 'Plataforma de gestión escolar y comunicación en tiempo real',
         theme_color: '#ffffff',
         start_url: '/',
