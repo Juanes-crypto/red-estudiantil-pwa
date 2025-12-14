@@ -435,17 +435,25 @@ export const TeacherService = {
      * Obtener profesores de un grupo
      */
     async getByGroup(groupId: string) {
+        console.log('🔍 [TeacherService] getByGroup called with groupId:', groupId);
+
         // 1. Obtener IDs de docentes del grupo
         const { data: assignments, error: assignError } = await supabase
             .from('docentes_grupos')
             .select('docente_id')
             .eq('grupo_id', groupId);
 
+        console.log('🔍 [TeacherService] docentes_grupos query result:', { assignments, assignError });
+
         if (assignError) throw assignError;
 
         const teacherIds = assignments.map(a => a.docente_id);
+        console.log('🔍 [TeacherService] teacherIds extracted:', teacherIds);
 
-        if (teacherIds.length === 0) return [];
+        if (teacherIds.length === 0) {
+            console.warn('⚠️ [TeacherService] No teacher IDs found for this group');
+            return [];
+        }
 
         // 2. Obtener perfiles de esos docentes
         const { data: teachers, error: profileError } = await supabase
@@ -453,6 +461,8 @@ export const TeacherService = {
             .select('id, full_name')
             .in('id', teacherIds)
             .order('full_name');
+
+        console.log('🔍 [TeacherService] profiles query result:', { teachers, profileError });
 
         if (profileError) throw profileError;
         return teachers;

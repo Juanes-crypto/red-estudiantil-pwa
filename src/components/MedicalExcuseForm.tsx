@@ -46,14 +46,22 @@ export default function MedicalExcuseForm({ parentId, onSuccess, onCancel }: Pro
 
     const loadTeachersForStudent = async (studentId: string) => {
         try {
+            console.log('🔍 [DEBUG] Loading teachers for student:', studentId);
             const student = students.find(s => s.id === studentId);
+            console.log('🔍 [DEBUG] Student found:', student);
+            console.log('🔍 [DEBUG] Student grupo_id:', student?.grupo_id);
+
             if (student?.grupo_id) {
+                console.log('🔍 [DEBUG] Calling TeacherService.getByGroup with:', student.grupo_id);
                 const teachersData = await TeacherService.getByGroup(student.grupo_id);
+                console.log('🔍 [DEBUG] Teachers received:', teachersData);
                 setTeachers(teachersData);
-                // Por defecto seleccionar todos? No, mejor que el padre elija.
+            } else {
+                console.warn('⚠️ [DEBUG] Student has no grupo_id');
+                setTeachers([]);
             }
         } catch (error) {
-            console.error('Error loading teachers:', error);
+            console.error('❌ [DEBUG] Error loading teachers:', error);
         }
     };
 

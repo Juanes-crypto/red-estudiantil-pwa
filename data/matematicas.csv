@@ -1,0 +1,6 @@
+enunciado,opcion_a,opcion_b,opcion_c,opcion_d,respuesta_correcta,explicacion,year
+"Si un pantalón cuesta $100.000 y tiene un descuento del 20%, ¿cuánto se paga?","$20.000","$80.000","$90.000","$120.000","B","El 20% de 100.000 es 20.000. Restando 20.000 a 100.000 da 80.000.",2024
+"¿Cuál es el resultado de 3 + 4 x 2?","14","11","10","24","B","Por jerarquía de operaciones, primero se multiplica: 4x2=8. Luego se suma: 3+8=11.",2024
+"En un triángulo rectángulo, si los catetos miden 3 y 4, ¿cuánto mide la hipotenusa?","5","6","7","8","A","Usando Pitágoras: h² = 3² + 4² = 9 + 16 = 25. La raíz de 25 es 5.",2024
+"¿Cuál es el área de un cuadrado de lado 5cm?","20 cm²","25 cm²","10 cm²","15 cm²","B","El área de un cuadrado es lado x lado. 5 x 5 = 25.",2024
+"Si x + 5 = 12, ¿cuánto vale x?","5","6","7","17","C","Despejando x: x = 12 - 5, por lo tanto x = 7.",2024

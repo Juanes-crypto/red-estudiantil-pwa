@@ -33,138 +33,143 @@ function pemToBinary(pem: string) {
 
 serve(async (req) => {
   try {
-    const { record } = await req.json();
+    // --- IDENTIFICAR TIPO DE NOTIFICACIÓN ---
+    // Caso A: Excusa Médica (record tiene excuse_id)
+    if (record.excuse_id) {
+      console.log(`📝 Nueva excusa asignada a docente: ${record.teacher_id}`);
 
-    if (!record) {
-      return new Response("No hay registro para procesar", { status: 200 });
-    }
+      // 1. Obtener datos del docente (Token FCM)
+      const { data: teacher, error: teacherError } = await supabase
+        .from("profiles")
+        .select("fcm_token, full_name")
+        .eq("id", record.teacher_id)
+        .single();
 
-    console.log(`📝 Nueva asistencia recibida: ${record.status} para estudiante ${record.student_id}`);
+      if (teacherError || !teacher || !teacher.fcm_token) {
+        console.log(`⚠️ El docente no tiene token configurado.`);
+        return new Response("Docente sin token", { status: 200 });
+      }
 
-    // --- CLIENTE SUPABASE ---
-    const supabaseUrl = Deno.env.get("MY_SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("MY_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+      // 2. Obtener datos de la excusa y estudiante
+      const { data: excuse, error: excuseError } = await supabase
+        .from("medical_excuses")
+        .select(`
+          reason,
+          date,
+          student:students(full_name)
+        `)
+        .eq("id", record.excuse_id)
+        .single();
 
-    // --- BUSCAR DATOS ---
-    const { data: student, error: studentError } = await supabase
-      .from("students")
-      .select("full_name, parent_id")
-      .eq("id", record.student_id)
-      .single();
+      if (excuseError || !excuse) {
+        console.error("❌ Error buscando excusa:", excuseError?.message);
+        return new Response("Error buscando excusa", { status: 400 });
+      }
 
-    if (studentError || !student) {
-      console.error("❌ Error buscando estudiante:", studentError?.message);
-      return new Response("Error buscando estudiante", { status: 400 });
-    }
+      // 3. Construir mensaje
+      const notificationBody = `Nueva excusa de ${excuse.student.full_name}. Motivo: ${excuse.reason.substring(0, 50)}${excuse.reason.length > 50 ? '...' : ''}`;
 
-    const { data: parent, error: parentError } = await supabase
-      .from("profiles")
-      .select("fcm_token")
-      .eq("id", student.parent_id)
-      .single();
-
-    if (parentError || !parent || !parent.fcm_token) {
-      console.log(`⚠️ El padre no tiene token configurado.`);
-      return new Response("Padre sin token", { status: 200 });
-    }
-
-    // --- BUSCAR NOMBRE DEL PROFESOR ---
-    const { data: teacher, error: teacherError } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", record.teacher_id)
-      .single();
-
-    if (teacherError || !teacher) {
-      console.warn("⚠️ No se pudo obtener el nombre del profesor:", teacherError?.message);
-    }
-
-    // --- AUTENTICACIÓN GOOGLE (CORREGIDO) ---
-
-    // 1. Preparamos la llave
-    const cryptoKey = await crypto.subtle.importKey(
-      "pkcs8",
-      pemToBinary(serviceAccount.private_key),
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-
-    // 2. Creamos el JWT
-    // ¡AQUÍ ESTABA MI ERROR ANTES! Pasaba { key: cryptoKey } en vez de cryptoKey directo.
-    const jwt = await create(
-      { alg: "RS256", typ: "JWT" },
-      {
-        iss: serviceAccount.client_email,
-        scope: "https://www.googleapis.com/auth/firebase.messaging",
-        aud: "https://oauth2.googleapis.com/token",
-        exp: getNumericDate(60 * 60),
-        iat: getNumericDate(0),
-      },
-      cryptoKey // <--- ¡CORRECCIÓN MAESTRA! Sin llaves { } rodeándolo
-    );
-
-    // --- OBTENER ACCESS TOKEN ---
-    const googleAuthResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        assertion: jwt,
-      }),
-    });
-
-    const googleAuthData = await googleAuthResponse.json();
-    const accessToken = googleAuthData.access_token;
-
-    if (!accessToken) {
-      console.error("❌ Fallo autenticación Google:", googleAuthData);
-      return new Response("Fallo autenticación Google", { status: 500 });
-    }
-
-    // --- ENVIAR NOTIFICACIÓN ---
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-
-    // Construir mensaje con nombre del profesor
-    const statusText = record.status === 'tarde' ? 'llegó tarde' : 'faltó';
-    const teacherName = teacher?.full_name || 'Un profesor';
-    const notificationBody = `${student.full_name} ${statusText} a la clase. Profesor: ${teacherName}`;
-
-    const mensaje = {
-      message: {
-        token: parent.fcm_token,
-        notification: {
-          title: `🔔 Alerta de Asistencia`,
-          body: notificationBody,
-        },
-        // Añadimos URL para que al hacer clic abra la app
-        webpush: {
-          fcm_options: {
-            link: Deno.env.get("APP_URL") || "https://red-estudiantil-pwa.vercel.app"
+      const mensaje = {
+        message: {
+          token: teacher.fcm_token,
+          notification: {
+            title: `🏥 Nueva Excusa Médica`,
+            body: notificationBody,
+          },
+          webpush: {
+            fcm_options: {
+              link: Deno.env.get("APP_URL") || "https://red-estudiantil-pwa.vercel.app"
+            }
           }
-        }
-      },
-    };
+        },
+      };
 
-    const fcmResponse = await fetch(fcmUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(mensaje),
-    });
+      // 4. Enviar a Firebase (Reutilizamos lógica de abajo)
+      await sendToFirebase(mensaje, accessToken, serviceAccount.project_id);
+      return new Response("Notificación de excusa enviada", { status: 200 });
+    }
 
-    const fcmResult = await fcmResponse.json();
-    console.log("✅ Notificación enviada a Firebase:", fcmResult);
+    // Caso B: Asistencia (record tiene status)
+    if (record.status) {
+      console.log(`📝 Nueva asistencia recibida: ${record.status} para estudiante ${record.student_id}`);
 
-    return new Response(JSON.stringify(fcmResult), {
-      headers: { "Content-Type": "application/json" },
-    });
+      // 1. Buscar Estudiante y Padre
+      const { data: student, error: studentError } = await supabase
+        .from("students")
+        .select("full_name, parent_id")
+        .eq("id", record.student_id)
+        .single();
+
+      if (studentError || !student) {
+        console.error("❌ Error buscando estudiante:", studentError?.message);
+        return new Response("Error buscando estudiante", { status: 400 });
+      }
+
+      const { data: parent, error: parentError } = await supabase
+        .from("profiles")
+        .select("fcm_token")
+        .eq("id", student.parent_id)
+        .single();
+
+      if (parentError || !parent || !parent.fcm_token) {
+        console.log(`⚠️ El padre no tiene token configurado.`);
+        return new Response("Padre sin token", { status: 200 });
+      }
+
+      // 2. Buscar Profesor
+      const { data: teacher, error: teacherError } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", record.teacher_id)
+        .single();
+
+      // 3. Construir mensaje
+      const statusText = record.status === 'tarde' ? 'llegó tarde' : 'faltó';
+      const teacherName = teacher?.full_name || 'Un profesor';
+      const notificationBody = `${student.full_name} ${statusText} a la clase. Profesor: ${teacherName}`;
+
+      const mensaje = {
+        message: {
+          token: parent.fcm_token,
+          notification: {
+            title: `🔔 Alerta de Asistencia`,
+            body: notificationBody,
+          },
+          webpush: {
+            fcm_options: {
+              link: Deno.env.get("APP_URL") || "https://red-estudiantil-pwa.vercel.app"
+            }
+          }
+        },
+      };
+
+      // 4. Enviar
+      await sendToFirebase(mensaje, accessToken, serviceAccount.project_id);
+      return new Response("Notificación de asistencia enviada", { status: 200 });
+    }
+
+    return new Response("Tipo de registro no manejado", { status: 200 });
 
   } catch (error) {
     console.error("❌ Error general en la función:", error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 });
+
+// Función auxiliar para enviar a Firebase y limpiar el código principal
+async function sendToFirebase(mensaje: any, accessToken: string, projectId: string) {
+  const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+
+  const fcmResponse = await fetch(fcmUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(mensaje),
+  });
+
+  const fcmResult = await fcmResponse.json();
+  console.log("✅ Notificación enviada a Firebase:", fcmResult);
+  return fcmResult;
+}
