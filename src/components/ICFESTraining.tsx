@@ -1,19 +1,21 @@
 // ================================================
 // ICFES TRAINING - Componente Principal
 // ================================================
-// Sistema de entrenamiento con IA personalizada
+// Sistema de entrenamiento con IA personalizada (Modo Tarjetas)
 // ================================================
 
-import { useState } from 'react';
-import { Button, Card, Loading, ErrorDisplay, Badge } from './ui';
-import { ICFESService } from '../lib/services';
+import { useState, useEffect } from 'react';
+import { Button, Loading, ErrorDisplay, Card, Badge } from './ui';
 import {
-    getModuleGreeting,
-    getAnswerFeedback,
     MODULOS_CONFIG,
-    getFormattedOptions,
+    startICFESChat,
+    sendMessageToChat,
     type ICFESQuestion
 } from '../lib/gemini';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface Props {
     studentId: string;
@@ -22,135 +24,127 @@ interface Props {
     onConfigureApiKey: () => void;
 }
 
-type ViewState = 'modules' | 'question' | 'feedback';
+type ViewState = 'modules' | 'question';
 
-export default function ICFESTraining({ studentId, studentName, apiKey, onConfigureApiKey }: Props) {
+export default function ICFESTraining({ studentName, apiKey, onConfigureApiKey }: Props) {
     const [view, setView] = useState<ViewState>('modules');
     const [selectedModule, setSelectedModule] = useState<string | null>(null);
-    const [currentQuestion, setCurrentQuestion] = useState<ICFESQuestion | null>(null);
-    const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-    const [aiGreeting, setAiGreeting] = useState<string>('');
-    const [aiFeedback, setAiFeedback] = useState<string>('');
-    const [isCorrect, setIsCorrect] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [questionsAnswered, setQuestionsAnswered] = useState(0);
 
-    // Seleccionar módulo y obtener saludo de IA
-    const handleModuleSelect = async (modulo: string) => {
-        setSelectedModule(modulo);
+    // Estado del entrenamiento
+    const [chatSession, setChatSession] = useState<any>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<ICFESQuestion | null>(null);
+    const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [stats, setStats] = useState({ correct: 0, total: 0 });
+
+    // Helper para parsear JSON de la respuesta de la IA
+    const parseQuestionFromResponse = (text: string): ICFESQuestion | null => {
+        try {
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const jsonStr = jsonMatch[0];
+                const parsed = JSON.parse(jsonStr);
+                if (parsed.enunciado && parsed.opcion_a) {
+                    return {
+                        id: `q-${Date.now()}`,
+                        modulo: selectedModule || '',
+                        ...parsed
+                    };
+                }
+            }
+        } catch (e) {
+            console.warn('Error parsing question JSON:', e);
+        }
+        return null;
+    };
+
+    // Iniciar sesión de entrenamiento
+    const startTraining = async (modulo: string) => {
         setLoading(true);
         setError(null);
-
         try {
-            // Obtener saludo de IA
-            const greeting = await getModuleGreeting(apiKey, modulo, studentName);
-            setAiGreeting(greeting);
+            const { chat, initialMessage } = await startICFESChat(apiKey, modulo, studentName);
+            setChatSession(chat);
 
-            // Cargar primera pregunta
-            await loadNextQuestion(modulo);
-            setView('question');
+            const question = parseQuestionFromResponse(initialMessage);
+            if (question) {
+                setCurrentQuestion(question);
+                setView('question');
+            } else {
+                // Si no hay pregunta en el primer mensaje, pedir una explícitamente
+                const response = await sendMessageToChat(chat, "Dame la primera pregunta por favor.");
+                const retryQuestion = parseQuestionFromResponse(response);
+                if (retryQuestion) {
+                    setCurrentQuestion(retryQuestion);
+                    setView('question');
+                } else {
+                    throw new Error("No se pudo generar la pregunta. Intenta de nuevo.");
+                }
+            }
         } catch (err: any) {
-            console.error('Error:', err);
-            setError('Error al cargar el módulo. Verifica tu API Key.');
+            console.error(err);
+            setError(err.message || "Error al iniciar el entrenamiento");
         } finally {
             setLoading(false);
         }
     };
 
-    const [seenQuestionIds, setSeenQuestionIds] = useState<string[]>([]);
+    // Manejar respuesta del estudiante
+    const handleAnswer = (option: string) => {
+        if (showFeedback) return;
+        setSelectedAnswer(option);
+        setShowFeedback(true);
+
+        const isCorrect = option === currentQuestion?.respuesta_correcta;
+        if (isCorrect) {
+            setStats(prev => ({ ...prev, correct: prev.correct + 1, total: prev.total + 1 }));
+        } else {
+            setStats(prev => ({ ...prev, total: prev.total + 1 }));
+        }
+    };
 
     // Cargar siguiente pregunta
-    const loadNextQuestion = async (modulo: string) => {
+    const handleNextQuestion = async () => {
+        if (!chatSession) return;
+        setLoading(true);
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+        setCurrentQuestion(null); // Limpiar para mostrar loading
+
         try {
-            setLoading(true);
-
-            // 1. Intentar obtener de BD excluyendo las vistas
-            let question = await ICFESService.getRandomQuestion(modulo, seenQuestionIds);
-
-            // 2. Si no hay en BD (o se acabaron), generar con IA
-            if (!question) {
-                console.log('📭 Se acabaron las preguntas en BD. Generando con IA...');
-                const { generateICFESQuestion } = await import('../lib/gemini');
-                const aiQuestion = await generateICFESQuestion(apiKey, modulo);
-
-                // Guardar en BD para tener ID real y contribuir al pool (Escalabilidad)
-                question = await ICFESService.saveGeneratedQuestion(aiQuestion);
-            }
+            const response = await sendMessageToChat(chatSession, "Dame otra pregunta.");
+            const question = parseQuestionFromResponse(response);
 
             if (question) {
                 setCurrentQuestion(question);
-                setSeenQuestionIds(prev => [...prev, question.id]);
-                setSelectedAnswer(null);
+            } else {
+                // Retry simple
+                const retry = await sendMessageToChat(chatSession, "Por favor genera la pregunta en formato JSON.");
+                const retryQ = parseQuestionFromResponse(retry);
+                if (retryQ) setCurrentQuestion(retryQ);
+                else throw new Error("Error al cargar la siguiente pregunta");
             }
-        } catch (err: any) {
-            setError('Error al cargar pregunta');
+        } catch (err) {
             console.error(err);
+            setError("Error al cargar la pregunta. Intenta de nuevo.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Enviar respuesta
-    const handleSubmitAnswer = async () => {
-        if (!selectedAnswer || !currentQuestion) return;
-
-        setLoading(true);
-        setError(null);
-
-        try {
-            const correct = selectedAnswer === currentQuestion.respuesta_correcta;
-            setIsCorrect(correct);
-
-            // Guardar intento en BD
-            // Nota: Si la pregunta es de IA y falló el guardado, esto podría fallar por FK.
-            // Pero saveGeneratedQuestion retorna la original si falla, así que manejamos el error silenciosamente en el servicio.
-            if (!currentQuestion.id.toString().startsWith('ai-')) {
-                await ICFESService.createAttempt({
-                    student_id: studentId,
-                    question_id: currentQuestion.id,
-                    respuesta_estudiante: selectedAnswer,
-                    es_correcta: correct
-                });
-            }
-
-            // Obtener feedback de IA
-            const feedback = await getAnswerFeedback(
-                apiKey,
-                currentQuestion,
-                selectedAnswer,
-                correct,
-                studentName
-            );
-            setAiFeedback(feedback);
-            setQuestionsAnswered(prev => prev + 1);
-            setView('feedback');
-        } catch (err: any) {
-            console.error('Error:', err);
-            setError('Error al procesar respuesta');
-        } finally {
-            setLoading(false);
-        }
+    const handleModuleSelect = (modulo: string) => {
+        setSelectedModule(modulo);
+        startTraining(modulo);
     };
 
-    // Siguiente pregunta
-    const handleNextQuestion = () => {
-        if (selectedModule && !loading) {
-            loadNextQuestion(selectedModule);
-            setView('question');
-            setAiFeedback('');
-            setSelectedAnswer(null);
-        }
-    };
-
-    // Volver a módulos
     const handleBackToModules = () => {
         setView('modules');
         setSelectedModule(null);
+        setChatSession(null);
         setCurrentQuestion(null);
-        setAiGreeting('');
-        setQuestionsAnswered(0);
-        setSeenQuestionIds([]);
+        setStats({ correct: 0, total: 0 });
     };
 
     // RENDER: Selección de módulos
@@ -184,160 +178,138 @@ export default function ICFESTraining({ studentId, studentName, apiKey, onConfig
                     </Button>
                 </div>
 
-                {loading && <Loading text="Cargando módulo..." />}
+                {loading && <Loading text="Iniciando sesión con el Tutor IA..." />}
                 {error && <ErrorDisplay error={error} />}
             </div>
         );
     }
 
-    // RENDER: Pregunta
+    // RENDER: Question Card Mode
     if (view === 'question' && currentQuestion) {
-        const options = getFormattedOptions(currentQuestion);
-        const moduloInfo = MODULOS_CONFIG[selectedModule as keyof typeof MODULOS_CONFIG];
+        const moduleInfo = MODULOS_CONFIG[selectedModule as keyof typeof MODULOS_CONFIG];
+        const isCorrect = selectedAnswer === currentQuestion.respuesta_correcta;
 
         return (
-            <div className="space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
-                    <Badge variant="info">
-                        {moduloInfo.icon} {moduloInfo.nombre}
-                    </Badge>
-                    <Badge variant="success">
-                        Pregunta #{questionsAnswered + 1}
+                <div className="flex items-center justify-between bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleBackToModules} className="text-white hover:text-blue-300 transition-colors">
+                            ← Salir
+                        </button>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl bg-gradient-to-br ${moduleInfo.color}`}>
+                            {moduleInfo.icon}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-white">{moduleInfo.nombre}</h3>
+                            <p className="text-xs text-zinc-300">Pregunta {stats.total + (showFeedback ? 0 : 1)}</p>
+                        </div>
+                    </div>
+                    <Badge variant="outline" className="text-white border-white/30">
+                        Aciertos: {stats.correct}/{stats.total}
                     </Badge>
                 </div>
 
-                {/* Saludo de IA (primera pregunta) */}
-                {aiGreeting && questionsAnswered === 0 && (
-                    <Card className="bg-cyan-900/20 border-cyan-700">
-                        <div className="flex gap-3">
-                            <div className="text-3xl">🤖</div>
-                            <div className="flex-1">
-                                <p className="text-cyan-300 whitespace-pre-line">{aiGreeting}</p>
-                            </div>
-                        </div>
-                    </Card>
-                )}
-
-                {/* Pregunta */}
-                <Card>
-                    <h3 className="text-lg font-semibold text-white mb-6">
-                        {currentQuestion.enunciado}
-                    </h3>
-
-                    <div className="space-y-3">
-                        {options.map((option) => (
-                            <label
-                                key={option.value}
-                                className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all
-                  ${selectedAnswer === option.value
-                                        ? 'border-cyan-500 bg-cyan-900/30'
-                                        : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
-                                    }`}
+                {/* Question Card */}
+                <div className="space-y-8">
+                    {/* Question Area */}
+                    <div className="bg-white p-8 rounded-2xl shadow-xl text-center min-h-[200px] flex items-center justify-center border-b-4 border-slate-200">
+                        <div className="prose prose-xl max-w-none text-slate-800 font-medium">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
                             >
-                                <input
-                                    type="radio"
-                                    name="answer"
-                                    value={option.value}
-                                    checked={selectedAnswer === option.value}
-                                    onChange={(e) => setSelectedAnswer(e.target.value)}
-                                    className="mt-1 accent-cyan-500"
-                                />
-                                <div className="flex-1">
-                                    <span className="font-semibold text-cyan-400">{option.value}.</span>{' '}
-                                    <span className="text-white">{option.label}</span>
-                                </div>
-                            </label>
-                        ))}
-                    </div>
-                </Card>
-
-                {/* Botones */}
-                <div className="flex gap-3">
-                    <Button
-                        variant="secondary"
-                        onClick={handleBackToModules}
-                        disabled={loading}
-                    >
-                        ← Cambiar Módulo
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onClick={handleSubmitAnswer}
-                        disabled={!selectedAnswer || loading}
-                        loading={loading}
-                        fullWidth
-                    >
-                        {loading ? 'Procesando...' : 'Enviar Respuesta →'}
-                    </Button>
-                </div>
-
-                {error && <ErrorDisplay error={error} />}
-            </div>
-        );
-    }
-
-    // RENDER: Feedback
-    if (view === 'feedback') {
-        return (
-            <div className="space-y-6">
-                {/* Resultado */}
-                <Card className={isCorrect ? 'bg-green-900/20 border-green-700' : 'bg-yellow-900/20 border-yellow-700'}>
-                    <div className="text-center mb-4">
-                        <div className="text-6xl mb-3">
-                            {isCorrect ? '✅' : '📚'}
+                                {currentQuestion.enunciado}
+                            </ReactMarkdown>
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">
-                            {isCorrect ? '¡Respuesta Correcta!' : 'Sigue Aprendiendo'}
-                        </h3>
-                        <Badge variant={isCorrect ? 'success' : 'warning'} size="md">
-                            Respuesta correcta: {currentQuestion?.respuesta_correcta}
-                        </Badge>
                     </div>
 
-                    {/* Feedback de IA */}
-                    <div className="bg-zinc-900/50 rounded-lg p-4">
-                        <div className="flex gap-3">
-                            <div className="text-2xl">🤖</div>
-                            <div className="flex-1">
-                                <p className="text-white whitespace-pre-line leading-relaxed">
-                                    {aiFeedback}
-                                </p>
+                    {/* Options Grid - Kahoot Style */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                            { val: 'A', txt: currentQuestion.opcion_a, color: 'bg-red-500 hover:bg-red-600 border-red-700', icon: '▲' },
+                            { val: 'B', txt: currentQuestion.opcion_b, color: 'bg-blue-500 hover:bg-blue-600 border-blue-700', icon: '◆' },
+                            { val: 'C', txt: currentQuestion.opcion_c, color: 'bg-amber-500 hover:bg-amber-600 border-amber-700', icon: '●' },
+                            { val: 'D', txt: currentQuestion.opcion_d, color: 'bg-green-500 hover:bg-green-600 border-green-700', icon: '■' }
+                        ].map((opt) => {
+                            let btnClass = `${opt.color} text-white border-b-4 active:border-b-0 active:translate-y-1`;
+
+                            // Feedback Logic
+                            if (showFeedback) {
+                                if (opt.val === currentQuestion.respuesta_correcta) {
+                                    btnClass = "bg-green-500 border-green-700 text-white ring-4 ring-green-300 scale-105 z-10"; // Correct
+                                } else if (opt.val === selectedAnswer) {
+                                    btnClass = "bg-red-500 border-red-700 text-white opacity-50"; // Wrong
+                                } else {
+                                    btnClass = "bg-slate-300 border-slate-400 text-slate-500 opacity-50 grayscale"; // Others
+                                }
+                            }
+
+                            return (
+                                <button
+                                    key={opt.val}
+                                    onClick={() => handleAnswer(opt.val)}
+                                    disabled={showFeedback}
+                                    className={`p-6 rounded-xl transition-all duration-200 flex items-center gap-4 shadow-lg ${btnClass}`}
+                                >
+                                    <div className="bg-black/20 w-12 h-12 rounded-lg flex items-center justify-center text-2xl font-bold shrink-0 backdrop-blur-sm">
+                                        {opt.icon}
+                                    </div>
+                                    <span className="text-lg md:text-xl font-bold text-left leading-tight shadow-black drop-shadow-md">
+                                        {opt.txt}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Feedback Section */}
+                    {showFeedback && (
+                        <div className={`p-6 rounded-2xl border-2 animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl
+                            ${isCorrect ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`}>
+                            <div className="flex flex-col md:flex-row items-center gap-4 mb-4 text-center md:text-left">
+                                <div className={`text-5xl ${isCorrect ? 'animate-bounce' : 'animate-shake'}`}>
+                                    {isCorrect ? '🏆' : '😢'}
+                                </div>
+                                <div>
+                                    <h4 className={`text-2xl font-black uppercase ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                        {isCorrect ? '¡Respuesta Correcta!' : '¡Respuesta Incorrecta!'}
+                                    </h4>
+                                    <p className="text-slate-600 font-medium">
+                                        {isCorrect ? '¡Sigue así, vas muy bien!' : 'No te rindas, aprende del error.'}
+                                    </p>
+                                </div>
+                                <div className="flex-1" />
+                                <Button
+                                    onClick={handleNextQuestion}
+                                    disabled={loading}
+                                    className="w-full md:w-auto text-lg px-8 py-4 shadow-xl"
+                                >
+                                    {loading ? 'Cargando...' : 'Siguiente Pregunta ➜'}
+                                </Button>
+                            </div>
+
+                            <div className="bg-white/50 p-4 rounded-xl border border-black/5">
+                                <h5 className="font-bold text-slate-700 mb-2">Explicación:</h5>
+                                <div className="text-slate-800 leading-relaxed text-lg">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkMath]}
+                                        rehypePlugins={[rehypeKatex]}
+                                    >
+                                        {currentQuestion.explicacion || "No hay explicación disponible."}
+                                    </ReactMarkdown>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </Card>
-
-                {/* Estadísticas */}
-                <Card>
-                    <div className="text-center">
-                        <p className="text-zinc-400 text-sm mb-2">Preguntas respondidas en esta sesión</p>
-                        <p className="text-3xl font-bold text-cyan-400">{questionsAnswered}</p>
-                    </div>
-                </Card>
-
-                {/* Botones */}
-                <div className="flex gap-3">
-                    <Button
-                        variant="secondary"
-                        onClick={handleBackToModules}
-                        disabled={loading}
-                    >
-                        ← Cambiar Módulo
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onClick={handleNextQuestion}
-                        disabled={loading}
-                        loading={loading}
-                        fullWidth
-                    >
-                        {loading ? 'Cargando...' : 'Siguiente Pregunta →'}
-                    </Button>
+                    )}
                 </div>
             </div>
         );
     }
 
-    return <Loading />;
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+            <Loading text={loading ? "Generando pregunta..." : "Cargando..."} />
+        </div>
+    );
 }

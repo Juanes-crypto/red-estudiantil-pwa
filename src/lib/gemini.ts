@@ -78,7 +78,7 @@ export async function getModuleGreeting(
 ): Promise<string> {
     try {
         const genAI = initGemini(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
         const moduloInfo = MODULOS_CONFIG[modulo as keyof typeof MODULOS_CONFIG];
 
@@ -115,7 +115,7 @@ export async function getAnswerFeedback(
 ): Promise<string> {
     try {
         const genAI = initGemini(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
         const prompt = isCorrect
             ? `Eres un tutor entusiasta del ICFES. El estudiante ${studentName} acaba de responder CORRECTAMENTE esta pregunta:
@@ -164,7 +164,7 @@ Usa emojis y un tono empático pero educativo.`;
 export async function validateGeminiKey(apiKey: string): Promise<boolean> {
     try {
         const genAI = initGemini(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
         // Hacer una consulta simple para validar
         const result = await model.generateContent('Hello');
@@ -198,7 +198,7 @@ export async function generateICFESQuestion(
     modulo: string
 ): Promise<ICFESQuestion> {
     const genAI = initGemini(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
     const moduloInfo = MODULOS_CONFIG[modulo as keyof typeof MODULOS_CONFIG];
 
@@ -263,5 +263,151 @@ Responde EXCLUSIVAMENTE con un objeto JSON con esta estructura (sin markdown):
     } catch (error) {
         console.error('Error generating question:', error);
         throw new Error('No se pudo generar una nueva pregunta con IA');
+    }
+}
+
+/**
+ * Obtener ruta del PDF según el módulo
+ */
+function getModulePdfPath(modulo: string): string {
+    const map: Record<string, string> = {
+        'lectura': '02_PRACTICA_LECTURA.pdf',
+        'matematicas': '04_PRACTICA_MATEMATICAS.pdf',
+        'sociales': '06_PRACTICA_SOCIALES.pdf',
+        'ciencias': '08_PRACTICA_CIENCIAS.pdf',
+        'ingles': '10_PRACTICA_INGLES.pdf'
+    };
+    return map[modulo] ? `/cuadernillosIcfes/${map[modulo]}` : '';
+}
+
+/**
+ * Fetch PDF and convert to Base64
+ */
+async function fetchPdfAsBase64(url: string): Promise<string> {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64data = reader.result as string;
+            // Remove data:application/pdf;base64, prefix
+            resolve(base64data.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+/**
+ * Iniciar sesión de chat para entrenamiento ICFES
+ */
+export async function startICFESChat(apiKey: string, modulo: string, studentName: string) {
+    const genAI = initGemini(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    const moduloInfo = MODULOS_CONFIG[modulo as keyof typeof MODULOS_CONFIG];
+    const pdfPath = getModulePdfPath(modulo);
+
+    let history: any[] = [];
+    let systemInstruction = `Eres un tutor experto del ICFES en el área de ${moduloInfo.nombre}. 
+    Tu objetivo es ayudar al estudiante ${studentName} a practicar.
+    
+    INSTRUCCIONES:
+    1. Usa el documento PDF adjunto como fuente principal de preguntas y contexto.
+    2. Cuando generes una pregunta, intenta sacar una similar o inspirada en el documento.
+    3. Si el estudiante pregunta algo, responde basándote en el documento si es posible.
+    4. Sé amable, motivador y claro.
+    5. Usa formato Markdown para fórmulas matemáticas. IMPORTANTE: Al escribir en JSON, usa DOBLE BACKSLASH (\\\\) para comandos LaTeX. Ejemplo: $\\\\frac{1}{2}$, $\\\\pi$.`;
+
+    try {
+        if (pdfPath) {
+            console.log(`📚 Cargando cuadernillo: ${pdfPath}`);
+            const pdfBase64 = await fetchPdfAsBase64(pdfPath);
+
+            history = [
+                {
+                    role: "user",
+                    parts: [
+                        { text: `Hola, soy ${studentName}. Quiero practicar ${moduloInfo.nombre}. Aquí tienes el cuadernillo oficial para que lo uses de referencia.` },
+                        {
+                            inlineData: {
+                                mimeType: "application/pdf",
+                                data: pdfBase64
+                            }
+                        }
+                    ],
+                },
+                {
+                    role: "model",
+                    parts: [{ text: `¡Hola ${studentName}! 🎓 He recibido el cuadernillo de ${moduloInfo.nombre}. Lo he analizado y estoy listo para ayudarte a practicar con preguntas basadas en este material oficial. ¿Empezamos?` }],
+                },
+            ];
+        } else {
+            // Fallback sin PDF
+            history = [
+                {
+                    role: "user",
+                    parts: [{ text: `Hola, soy ${studentName}. Quiero practicar ${moduloInfo.nombre}.` }],
+                },
+                {
+                    role: "model",
+                    parts: [{ text: `¡Hola ${studentName}! 🎓 Vamos a practicar ${moduloInfo.nombre}.` }],
+                },
+            ];
+        }
+
+        const chat = model.startChat({
+            history: history,
+            generationConfig: {
+                maxOutputTokens: 2000,
+            },
+            systemInstruction: {
+                role: "system",
+                parts: [{ text: systemInstruction }]
+            }
+        });
+
+        // Generar primera pregunta
+        const prompt = `Genera una pregunta de selección múltiple basada en el cuadernillo (si lo tienes).
+        
+        IMPORTANTE: Responde CON UN OBJETO JSON (sin markdown) con esta estructura:
+        {
+          "enunciado": "Texto de la pregunta. Para fórmulas matemáticas usa LaTeX con DOBLE BACKSLASH (\\\\) y signos de dólar. Ejemplo: $\\\\frac{3}{4}$, $x^2$.",
+          "opcion_a": "Opción A",
+          "opcion_b": "Opción B",
+          "opcion_c": "Opción C",
+          "opcion_d": "Opción D",
+          "respuesta_correcta": "Letra",
+          "explicacion": "Explicación breve (usa LaTeX con doble backslash para fórmulas)"
+        }
+        
+        Añade un mensaje motivador corto antes del JSON.`;
+
+        const result = await chat.sendMessage(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        return {
+            chat,
+            initialMessage: text
+        };
+
+    } catch (error) {
+        console.error('Error starting chat with PDF:', error);
+        // Fallback simple si falla la carga del PDF
+        throw error;
+    }
+}
+
+/**
+ * Enviar mensaje al chat
+ */
+export async function sendMessageToChat(chatSession: any, message: string) {
+    try {
+        const result = await chatSession.sendMessage(message);
+        const response = await result.response;
+        return response.text();
+    } catch (error) {
+        console.error('Error sending message to chat:', error);
+        throw error;
     }
 }

@@ -95,23 +95,22 @@ export default function ICFESApiKeySetup({
                     <h3 className="font-semibold text-cyan-300 flex items-center gap-2">
                         📋 Cómo obtener tu API Key (Gratis):
                     </h3>
-                    <ol className="list-decimal list-inside space-y-2 text-zinc-300">
-                        <li>
-                            Ve a{' '}
-                            <a
-                                href="https://aistudio.google.com/app/apikey"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-cyan-400 hover:text-cyan-300 underline"
-                            >
-                                Google AI Studio
-                            </a>
-                        </li>
-                        <li>Inicia sesión con tu cuenta de Google</li>
-                        <li>Haz clic en <strong>"Create API Key"</strong></li>
-                        <li>Copia la clave que aparece</li>
-                        <li>Pégala en el campo de abajo ⬇️</li>
-                    </ol>
+                    <div className="flex flex-col gap-3">
+                        <a
+                            href="https://aistudio.google.com/app/apikey"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-cyan-500/25 group"
+                        >
+                            <span>🔑 Obtener API Key Gratis</span>
+                            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+                        <p className="text-xs text-center text-zinc-400">
+                            (Te llevará a Google AI Studio. Inicia sesión, crea la key y pégala abajo)
+                        </p>
+                    </div>
                     <div className="bg-yellow-900/30 border border-yellow-700 rounded p-3 mt-3">
                         <p className="text-yellow-300 text-xs">
                             ⚠️ <strong>Importante:</strong> Tu API key es personal y gratuita.
