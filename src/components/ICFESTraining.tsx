@@ -1,11 +1,5 @@
-// ================================================
-// ICFES TRAINING - Componente Principal
-// ================================================
-// Sistema de entrenamiento con IA personalizada (Modo Tarjetas)
-// ================================================
-
-import { useState, useEffect } from 'react';
-import { Button, Loading, ErrorDisplay, Card, Badge } from './ui';
+import { useState } from 'react';
+import { Button, Loading, ErrorDisplay, Badge } from './ui';
 import {
     MODULOS_CONFIG,
     startICFESChat,
@@ -205,7 +199,7 @@ export default function ICFESTraining({ studentName, apiKey, onConfigureApiKey }
                             <p className="text-xs text-zinc-300">Pregunta {stats.total + (showFeedback ? 0 : 1)}</p>
                         </div>
                     </div>
-                    <Badge variant="outline" className="text-white border-white/30">
+                    <Badge className="text-white border-white/30 bg-blue-500/20">
                         Aciertos: {stats.correct}/{stats.total}
                     </Badge>
                 </div>
