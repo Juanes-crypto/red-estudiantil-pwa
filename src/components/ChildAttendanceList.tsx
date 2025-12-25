@@ -78,19 +78,19 @@ export default function ChildAttendanceList({ parentId }: Props) {
   }
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'presente': return 'bg-green-600'
-      case 'tarde': return 'bg-yellow-600'
-      case 'falta': return 'bg-red-600'
-      default: return 'bg-zinc-600'
+      case 'presente': return 'bg-green-100 text-green-700 border-green-200'
+      case 'tarde': return 'bg-yellow-100 text-yellow-700 border-yellow-200'
+      case 'falta': return 'bg-red-100 text-red-700 border-red-200'
+      default: return 'bg-slate-100 text-slate-700 border-slate-200'
     }
   }
 
   // (Tus 'loading', 'error' y 'length === 0' están perfectos)
-  if (loading) return <p className="text-center text-zinc-400">Cargando asistencias...</p>
+  if (loading) return <p className="text-center text-slate-400">Cargando asistencias...</p>
   if (error) return <p className="text-center text-red-500">Error: {error}</p>
   if (attendance.length === 0) {
     return (
-      <p className="text-center text-zinc-500">
+      <p className="text-center text-slate-500">
         No hay registros de asistencia para tus hijos.
       </p>
     )
@@ -98,24 +98,24 @@ export default function ChildAttendanceList({ parentId }: Props) {
 
   // ¡Render si SÍ hay registros!
   return (
-    <div className="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-4">
-      <ul className="divide-y divide-zinc-600">
+    <div className="w-full rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <ul className="divide-y divide-slate-100">
         {attendance.map((record) => (
           <li key={record.id} className="py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-bold text-slate-800">
                   {record.students?.full_name}
                 </h3>
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-slate-500 font-medium">
                   {formatDate(record.created_at)}
                 </p>
-                <p className="text-sm text-zinc-500">
+                <p className="text-xs text-slate-400 mt-1">
                   Registrado por: {record.teacher_id?.full_name || 'N/A'}
                 </p>
               </div>
               <span
-                className={`rounded-full px-3 py-1 text-sm font-medium text-white ${getStatusColor(record.status)}`}
+                className={`rounded-xl px-4 py-2 text-sm font-bold border ${getStatusColor(record.status)}`}
               >
                 {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
               </span>

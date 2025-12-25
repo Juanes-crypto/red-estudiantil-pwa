@@ -7,40 +7,89 @@
 
 @layer base {
     :root {
-        --brand-primary: 239 68 68;
-        --brand-accent: 59 130 246;
+        /* Blue Theme Palette */
+        --color-primary: 30 136 229;   /* #1E88E5 */
+        --color-primary-light: 66 165 245; /* #42A5F5 */
+        --color-primary-dark: 21 101 192;  /* #1565C0 */
+        --color-accent: 0 188 212;     /* #00BCD4 */
+        
+        /* Backgrounds */
+        --bg-page: 240 249 255;        /* Light Blue Tint */
+        --bg-card: 255 255 255;
     }
 
     body {
-        @apply font-sans antialiased;
-        @apply bg-surface-50 text-neutral-900;
+        @apply font-sans antialiased text-slate-800;
+        background-color: rgb(var(--bg-page));
     }
 
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-        @apply font-display;
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-display font-bold text-slate-900;
+    }
+}
+
+@layer components {
+    /* Menu Card Component - The core of the new design */
+    .menu-card {
+        @apply relative flex items-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100 transition-all duration-300 overflow-hidden cursor-pointer;
+    }
+    
+    .menu-card:hover {
+        @apply transform -translate-y-1 shadow-md border-blue-200;
     }
 
-    /* Scrollbar personalizada en rojo */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+    .menu-card:active {
+        @apply transform scale-[0.98];
     }
 
-    ::-webkit-scrollbar-track {
-        @apply bg-surface-100;
+    .menu-card-icon {
+        @apply flex-shrink-0 w-16 h-16 flex items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mr-5 transition-colors duration-300;
     }
 
-    ::-webkit-scrollbar-thumb {
-        @apply bg-brand-400 rounded-full;
+    .menu-card:hover .menu-card-icon {
+        @apply bg-blue-600 text-white;
     }
 
-    ::-webkit-scrollbar-thumb:hover {
-        @apply bg-brand-500;
+    .menu-card-content {
+        @apply flex-1 min-w-0;
+    }
+
+    .menu-card-title {
+        @apply text-lg font-bold text-slate-900 mb-1 truncate;
+    }
+
+    .menu-card-desc {
+        @apply text-sm text-slate-500 line-clamp-2;
+    }
+
+    .menu-card-arrow {
+        @apply flex-shrink-0 ml-4 text-slate-300 transition-colors duration-300;
+    }
+
+    .menu-card:hover .menu-card-arrow {
+        @apply text-blue-500 translate-x-1;
+    }
+
+    /* Auth Container */
+    .auth-container {
+        @apply min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-blue-800;
+    }
+
+    .auth-card {
+        @apply w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden;
+    }
+
+    /* Form Elements */
+    .input-field {
+        @apply w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all duration-200;
+    }
+
+    .btn-primary {
+        @apply w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 active:scale-[0.98] transition-all duration-200;
+    }
+
+    .btn-secondary {
+        @apply w-full py-4 bg-white border-2 border-slate-200 hover:border-blue-200 hover:bg-blue-50 text-slate-700 font-bold rounded-xl transition-all duration-200;
     }
 }
 
@@ -48,21 +97,13 @@
     .text-balance {
         text-wrap: balance;
     }
-
-    /* Animación de entrada suave */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    
+    .animate-enter {
+        animation: enter 0.4s ease-out forwards;
     }
 
-    .animate-fade-in-up {
-        animation: fadeInUp 0.3s ease-out;
+    @keyframes enter {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 }

@@ -63,13 +63,13 @@ export default function RegisterChildForm({ parentId, colegioId, onChildRegister
 
   // 6. El JSX (HTML) del formulario
   return (
-    <div className="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-6 shadow-md">
-      <form onSubmit={handleSubmit}>
+    <div className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Nombre Completo */}
-        <div className="mb-4">
+        <div>
           <label
             htmlFor="fullName"
-            className="mb-2 block text-sm font-medium text-zinc-300"
+            className="mb-2 block text-sm font-bold text-slate-700 uppercase tracking-wide"
           >
             Nombre Completo del Estudiante
           </label>
@@ -78,16 +78,17 @@ export default function RegisterChildForm({ parentId, colegioId, onChildRegister
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white"
+            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
+            placeholder="Ej: Juan Pérez"
             required
           />
         </div>
 
         {/* Documento */}
-        <div className="mb-6">
+        <div>
           <label
             htmlFor="docNumber"
-            className="mb-2 block text-sm font-medium text-zinc-300"
+            className="mb-2 block text-sm font-bold text-slate-700 uppercase tracking-wide"
           >
             Número de Documento
           </label>
@@ -98,7 +99,8 @@ export default function RegisterChildForm({ parentId, colegioId, onChildRegister
             pattern="[0-9]*"
             value={docNumber}
             onChange={(e) => setDocNumber(e.target.value)}
-            className="w-full rounded-lg border border-zinc-600 bg-zinc-700 p-2.5 text-white"
+            className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all duration-200"
+            placeholder="Ej: 123456789"
             required
           />
         </div>
@@ -106,17 +108,23 @@ export default function RegisterChildForm({ parentId, colegioId, onChildRegister
         {/* Botón */}
         <button
           type="submit"
-          className="w-full rounded-lg bg-cyan-600 px-5 py-2.5 text-center font-medium text-white hover:bg-cyan-700"
+          className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 active:scale-[0.98] transition-all duration-200"
           disabled={loading}
         >
-          {loading ? "Registrando..." : "Registrar Hijo"}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Registrando...
+            </span>
+          ) : "Registrar Hijo"}
         </button>
 
         {/* Mensaje de feedback */}
         {message && (
-          <p className="mt-4 text-center text-sm font-medium text-green-400">
+          <div className={`p-4 rounded-xl text-sm font-medium text-center ${message.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+            }`}>
             {message}
-          </p>
+          </div>
         )}
       </form>
     </div>

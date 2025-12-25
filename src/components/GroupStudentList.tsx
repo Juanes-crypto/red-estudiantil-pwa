@@ -27,7 +27,7 @@ export default function GroupStudentList({ groupId }: Props) {
       try {
         setLoading(true)
         setError(null)
-        
+
         // ¡La Consulta! (La misma que tenías)
         const { data, error } = await supabase
           .from('students')
@@ -35,15 +35,15 @@ export default function GroupStudentList({ groupId }: Props) {
           .eq('grupo_id', groupId)
 
         if (error) throw error
-        
+
         // ¡NUEVO! Formateamos los estudiantes para añadir el estado de UI
         const formattedStudents = (data || []).map(student => ({
           ...student,
           status: 'pending' as 'pending' // Estado inicial
         }));
-        
+
         setStudentList(formattedStudents); // Guardamos la lista formateada
-        
+
       } catch (error: any) {
         setError(error.message)
       } finally {
@@ -101,11 +101,11 @@ export default function GroupStudentList({ groupId }: Props) {
 
 
   // 7. RENDER (Lo que se ve)
-  if (loading) return <p className="text-center text-zinc-400">Cargando estudiantes...</p>
+  if (loading) return <p className="text-center text-slate-400">Cargando estudiantes...</p>
   if (error) return <p className="text-center text-red-500">Error: {error}</p>
   if (studentList.length === 0) {
     return (
-      <p className="text-center text-zinc-500">
+      <p className="text-center text-slate-500">
         No hay estudiantes registrados en este grupo.
       </p>
     )
@@ -113,38 +113,38 @@ export default function GroupStudentList({ groupId }: Props) {
 
   // ¡Render si SÍ hay estudiantes!
   return (
-    <div className="w-full rounded-lg border border-zinc-700 bg-zinc-800 p-4">
-      <ul className="divide-y divide-zinc-600">
-        
+    <div className="w-full rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <ul className="divide-y divide-slate-100">
+
         {/* ¡NUEVO MAPA! */}
         {studentList.map((student) => (
-          
-          <li key={student.id} className="flex flex-col items-center justify-between py-3 sm:flex-row">
-            
+
+          <li key={student.id} className="flex flex-col items-center justify-between py-4 sm:flex-row gap-4">
+
             {/* Nombre del estudiante */}
-            <span className="mb-2 font-semibold text-white sm:mb-0">{student.full_name}</span>
-            
+            <span className="font-bold text-slate-800">{student.full_name}</span>
+
             {/* --- Lógica de botones --- */}
             <div className="flex w-full shrink-0 space-x-2 sm:w-auto">
-              
+
               {/* VISTA 1: Botones (Estado 'pending') */}
               {student.status === 'pending' && (
                 <>
                   <button
                     onClick={() => handleMarkAttendance(student.id, 'presente')}
-                    className="w-1/3 flex-1 rounded-md bg-green-600 px-3 py-1 text-sm font-medium text-white shadow-sm hover:bg-green-700"
+                    className="flex-1 rounded-xl bg-green-50 px-4 py-2 text-sm font-bold text-green-700 hover:bg-green-100 transition-colors border border-green-200"
                   >
                     Presente
                   </button>
                   <button
                     onClick={() => handleMarkAttendance(student.id, 'tarde')}
-                    className="w-1/3 flex-1 rounded-md bg-yellow-600 px-3 py-1 text-sm font-medium text-white shadow-sm hover:bg-yellow-700"
+                    className="flex-1 rounded-xl bg-yellow-50 px-4 py-2 text-sm font-bold text-yellow-700 hover:bg-yellow-100 transition-colors border border-yellow-200"
                   >
                     Tarde
                   </button>
                   <button
                     onClick={() => handleMarkAttendance(student.id, 'falta')}
-                    className="w-1/3 flex-1 rounded-md bg-red-600 px-3 py-1 text-sm font-medium text-white shadow-sm hover:bg-red-700"
+                    className="flex-1 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-100 transition-colors border border-red-200"
                   >
                     Falta
                   </button>
@@ -153,12 +153,17 @@ export default function GroupStudentList({ groupId }: Props) {
 
               {/* VISTA 2: Cargando (Estado 'submitting') */}
               {student.status === 'submitting' && (
-                <p className="w-full text-center text-sm italic text-zinc-400">Guardando...</p>
+                <p className="w-full text-center text-sm italic text-slate-400">Guardando...</p>
               )}
 
               {/* VISTA 3: Guardado (Estado 'submitted') */}
               {student.status === 'submitted' && (
-                <p className="w-full text-center text-sm font-semibold text-green-400">¡Guardado! ✓</p>
+                <div className="w-full flex items-center justify-center gap-2 text-green-600 bg-green-50 py-2 rounded-xl border border-green-100">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-sm font-bold">Guardado</span>
+                </div>
               )}
 
             </div>
